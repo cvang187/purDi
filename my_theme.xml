@@ -1,0 +1,11 @@
+
+            <resources>
+                <color name="primaryColor">#ffffff</color>
+                <color name="primaryLightColor">#6effe8</color>
+                <color name="secondaryColor">#252525</color>
+                <color name="secondaryLightColor">#4f5b62</color>
+                <color name="secondaryDarkColor">#1b1b1b</color>
+                <color name="primaryTextColor">#ffffff</color>
+                <color name="secondaryTextColor">#ffffff</color>
+              </resources>
+            

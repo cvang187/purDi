@@ -1,0 +1,3 @@
+{
+    "files": ["ui_form.py","modules/QToolColorizer.py","modules/QAnimeGANv2.py","modules/QGrayScaleBackgroundTool.py","modules/QCropItem.py","theme/material/resources.qrc","modules/PurDiPromptSuggestion.py","modules/QLayerList.py","modules/PurDiCanvas.py","modules/UI_ColorPicker.py","modules/QFlowLayout.py","modules/PurDiToolBoxWidget.py","modules/QCurveWidget.py","purDi_Actions.py","modules/PurDiImageBrowser.py","form.ui","../purDi_app.py","modules/QPortraitMode.py","modules/QColorPicker.py","modules/QBackgroundRemovalTool.py","modules/PurDiDockWidget.py","modules/util.py"]
+}
