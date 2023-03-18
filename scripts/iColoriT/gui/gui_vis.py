@@ -15,14 +15,14 @@ class GUI_VIS(QWidget):
     def paintEvent(self, event):
         painter = QPainter()
         painter.begin(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
         painter.fillRect(event.rect(), QColor(49, 54, 49))
         if self.result is not None:
             h, w, c = self.result.shape
-            qImg = QImage(self.result.tostring(), w, h, QImage.Format.Format_RGB888)
+            q_img = QImage(self.result.tostring(), w, h, QImage.Format_RGB888)
             dw = int((self.win_width - w) // 2)
             dh = int((self.win_height - h) // 2)
-            painter.drawImage(dw, dh, qImg)
+            painter.drawImage(dw, dh, q_img)
 
         painter.end()
 
@@ -43,7 +43,7 @@ class GUI_VIS(QWidget):
         else:
             x = pos.x()
             y = pos.y()
-            return x >= 0 and y >= 0 and x < self.win_width and y < self.win_height
+            return 0 <= x < self.win_width and 0 <= y < self.win_height
 
     def scale_point(self, pnt):
         x = int(pnt.x() / self.scale)
@@ -53,7 +53,7 @@ class GUI_VIS(QWidget):
     def mousePressEvent(self, event):
         pos = event.pos()
         x, y = self.scale_point(pos)
-        if event.button() == Qt.MouseButton.LeftButton and self.is_valid_point(
+        if event.button() == Qt.LeftButton and self.is_valid_point(
             pos
         ):  # click the point
             if self.result is not None:

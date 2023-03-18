@@ -1,5 +1,5 @@
 import os.path
-import re
+# import re
 
 import cv2
 import numpy as np
@@ -9,31 +9,9 @@ from PIL.ImageQt import fromqpixmap
 from PySide6.QtCore import Qt, Signal, Slot, QObject
 from compel import Compel
 from controlnet_aux import OpenposeDetector, HEDdetector, MLSDdetector
-from diffusers import (
-    StableDiffusionPipeline,
-    StableDiffusionImg2ImgPipeline,
-    StableDiffusionImageVariationPipeline,
-    StableDiffusionAttendAndExcitePipeline,
-    StableDiffusionPanoramaPipeline,
-    DDIMScheduler,
-    CycleDiffusionPipeline,
-    StableDiffusionSAGPipeline,
-    StableDiffusionInstructPix2PixPipeline,
-    StableDiffusionPix2PixZeroPipeline,
-    DDIMInverseScheduler,
-    ControlNetModel,
-    StableDiffusionControlNetPipeline, StableDiffusionLatentUpscalePipeline, AutoencoderKL,
-)
 from torchvision.transforms import transforms
-from transformers import (
-    T5ForConditionalGeneration,
-    AutoTokenizer,
-    BlipProcessor,
-    BlipForConditionalGeneration,
-    pipeline,
-    AutoImageProcessor,
-    UperNetForSemanticSegmentation,
-)
+import diffusers
+import transformers
 
 
 class StableDiffusion(QObject):
@@ -41,10 +19,15 @@ class StableDiffusion(QObject):
     img_finished = Signal()
 
     def __init__(self, parent=None):
-        super().__init__()
+        super(StableDiffusion, self).__init__()
         self.parent = parent
-        self.model_dir = os.path.join(os.path.abspath(os.path.dirname("purDi")), "models")
-        self.output_type = 'pil' if not self.parent.ui.latent_upscale_2x.isChecked() else 'latent'
+        self.model_dir = os.path.join(
+            os.path.abspath(os.path.dirname("purDi")), "models"
+        )
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.output_type = (
+            "pil" if not self.parent.ui.latent_upscale_2x.isChecked() else "latent"
+        )
         self.callback_step = 1
 
         torch.backends.cudnn.benchmark = (
@@ -66,8 +49,7 @@ class StableDiffusion(QObject):
         if prompt weighting is enabled in UI settings.
         """
         generate_embed = Compel(
-            tokenizer=pipe_line.tokenizer,
-            text_encoder=pipe_line.text_encoder
+            tokenizer=pipe_line.tokenizer, text_encoder=pipe_line.text_encoder
         )
 
         prompt_weight_enabled = self.parent.ui.prompt_weight_checkbox.isChecked()
@@ -106,11 +88,11 @@ class StableDiffusion(QObject):
             strength,
         ) = self.user_params_for_pipeline("img2img")
 
-        pipe = StableDiffusionControlNetPipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionControlNetPipeline.from_pretrained(
             "runwayml/stable-diffusion-v1-5",
             controlnet=network,
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
@@ -120,15 +102,13 @@ class StableDiffusion(QObject):
         self.nsfw_check(pipe)
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for img in i2i_list:
@@ -168,10 +148,7 @@ class StableDiffusion(QObject):
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"CN_{positive[:60]}"
@@ -181,10 +158,10 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_canny(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "lllyasviel/sd-controlnet-canny",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -212,10 +189,10 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_openpose(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-openpose",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -231,14 +208,14 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_depth(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-depth",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __img_prep(img):
-            img_processor = pipeline('depth-estimation')
+            img_processor = transformers.pipeline("depth-estimation")
             depth_img = img_processor(img)["depth"]
             depth_img = np.array(depth_img)
             depth_img = depth_img[:, :, None]
@@ -252,10 +229,10 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_hed(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-hed",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -269,10 +246,10 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_mlsd(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-mlsd",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -286,10 +263,10 @@ class StableDiffusion(QObject):
 
     @Slot()
     def controlnet_scribble(self):
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-scribble",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -305,17 +282,17 @@ class StableDiffusion(QObject):
     def controlnet_seg(self):
         from scripts.diffusers.controlnet_utils import ade_palette
 
-        network_model = ControlNetModel.from_pretrained(
+        network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-seg",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet"
+            cache_dir=f"{self.model_dir}/controlnet",
         )
 
         def __img_prep(img):
-            img_processor = AutoImageProcessor.from_pretrained(
+            img_processor = transformers.AutoImageProcessor.from_pretrained(
                 "openmmlab/upernet-convnext-small"
             )
-            img_segmentor = UperNetForSemanticSegmentation.from_pretrained(
+            img_segmentor = transformers.UperNetForSemanticSegmentation.from_pretrained(
                 "openmmlab/upernet-convnext-small"
             )
             pixel_values = img_processor(img, return_tensors="pt").pixel_values
@@ -343,14 +320,12 @@ class StableDiffusion(QObject):
             network=network_model, processed_img=__img_prep, img_map_suffix="seg"
         )
 
-    @staticmethod
-    def generate_embed_captions(sentences, tokenizer, text_encoder, device="cuda"):
+    def generate_embed_captions(self, sentences, tokenizer, text_encoder):
         """
         Utility method for generating embed captions for use with Pix2Pix-Zero
         :param sentences:
         :param tokenizer:
         :param text_encoder:
-        :param device:
         """
         with torch.inference_mode():
             embeddings = []
@@ -364,7 +339,7 @@ class StableDiffusion(QObject):
                 )
                 text_input_ids = text_inputs.input_ids
                 prompt_embeds = text_encoder(
-                    text_input_ids.to(device), attention_mask=None
+                    text_input_ids.to(self.device), attention_mask=None
                 )[0]
                 embeddings.append(prompt_embeds)
         return torch.concatenate(embeddings, dim=0).mean(dim=0).unsqueeze(0)
@@ -375,8 +350,8 @@ class StableDiffusion(QObject):
         Utility method for generating captions for Pix2Pix-Zero
         :param input_prompt:
         """
-        tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
-        model = T5ForConditionalGeneration.from_pretrained(
+        tokenizer = transformers.AutoTokenizer.from_pretrained("google/flan-t5-base")
+        model = transformers.T5ForConditionalGeneration.from_pretrained(
             "google/flan-t5-base", device_map="auto", torch_dtype=torch.float16
         )
 
@@ -416,32 +391,32 @@ class StableDiffusion(QObject):
         ) = self.user_params_for_pipeline(inference_type="img2img")
 
         captioner_id = "Salesforce/blip-image-captioning-base"
-        processor = BlipProcessor.from_pretrained(captioner_id)
-        model = BlipForConditionalGeneration.from_pretrained(
+        processor = transformers.BlipProcessor.from_pretrained(captioner_id)
+        model = transformers.BlipForConditionalGeneration.from_pretrained(
             captioner_id, torch_dtype=torch.float16, low_cpu_mem_usage=True
         )
 
-        pipe = StableDiffusionPix2PixZeroPipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionPix2PixZeroPipeline.from_pretrained(
             "CompVis/stable-diffusion-v1-4",
             torch_dtype=torch.float16,
             caption_generator=model,
             caption_processor=processor,
-            cache_dir=self.model_dir
+            cache_dir=self.model_dir,
         )
-        pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
-        pipe.inverse_scheduler = DDIMInverseScheduler.from_config(pipe.scheduler.config)
+        pipe.scheduler = diffusers.DDIMScheduler.from_config(pipe.scheduler.config)
+        pipe.inverse_scheduler = diffusers.DDIMInverseScheduler.from_config(pipe.scheduler.config)
 
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
         self.nsfw_check(pipe)
 
-        w = width if not self.parent.ui.width_field == '' else None
-        h = height if not self.parent.ui.height_field == '' else None
+        w = width if not self.parent.ui.width_field == "" else None
+        h = height if not self.parent.ui.height_field == "" else None
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for img in i2i_list:
@@ -507,15 +482,12 @@ class StableDiffusion(QObject):
                     latents=inverted_latent,
                     output_type=self.output_type,
                     callback=live_img_preview,
-                    callback_steps=self.callback_step
+                    callback_steps=self.callback_step,
                 ).images
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"P2P_{caption[:60]}"
@@ -542,8 +514,10 @@ class StableDiffusion(QObject):
             steps,
         ) = self.user_params_for_pipeline()
 
-        pipe = StableDiffusionSAGPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-2-1-base", torch_dtype=torch.float16, cache_dir=self.model_dir
+        pipe = diffusers.StableDiffusionSAGPipeline.from_pretrained(
+            "stabilityai/stable-diffusion-2-1-base",
+            torch_dtype=torch.float16,
+            cache_dir=self.model_dir,
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.sliced_vae_check(pipe)
@@ -553,12 +527,12 @@ class StableDiffusion(QObject):
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         sag_scale = float(self.parent.ui.sag_scale_field.text())
         for n in range(n_image):
-            seed = self.random_or_manual_seed("cuda")
+            seed = self.random_or_manual_seed(self.device)
 
             with torch.inference_mode():
                 image = pipe(
@@ -574,15 +548,12 @@ class StableDiffusion(QObject):
                     output_type=self.output_type,
                     latents=None,
                     callback=live_img_preview,
-                    callback_steps=self.callback_step
+                    callback_steps=self.callback_step,
                 ).images
 
             if self.parent.ui.latent_upscale_2x.isChecked():
                 image = self.latent_upscaler_2x(
-                    prompt=positive,
-                    latent=image,
-                    steps=steps,
-                    seed=seed[0]
+                    prompt=positive, latent=image, steps=steps, seed=seed[0]
                 )
 
             name = f"SAG_{positive[:60]}"
@@ -612,24 +583,24 @@ class StableDiffusion(QObject):
 
         # TODO: should works with any version of Stable Diffusion but 2-1-768 gets OOM Error on 3080
         model_id = "stabilityai/stable-diffusion-2-1-base"
-        pipe = CycleDiffusionPipeline.from_pretrained(
+        pipe = diffusers.CycleDiffusionPipeline.from_pretrained(
             model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
         )
-        pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+        pipe.scheduler = diffusers.DDIMScheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
         self.nsfw_check(pipe)
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for img in i2i_list:
             initial_img = self.img2pillow(file=img)
 
             for n in range(n_image):
-                seed = self.random_or_manual_seed("cuda")
+                seed = self.random_or_manual_seed(self.device)
 
                 # TODO: Use BLIP to generate source_prompt
                 with torch.inference_mode():
@@ -645,21 +616,16 @@ class StableDiffusion(QObject):
                         source_guidance_scale=1,
                         output_type=self.output_type,
                         callback=live_img_preview,
-                        callback_steps=self.callback_step
+                        callback_steps=self.callback_step,
                     ).images
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"CD_{positive[:60]}"
-                self.save_images(
-                    image_list=image, seed_list=seed[1], filename=name
-                )
+                self.save_images(image_list=image, seed_list=seed[1], filename=name)
 
         self.img_finished.emit()
 
@@ -683,8 +649,10 @@ class StableDiffusion(QObject):
             strength,
         ) = self.user_params_for_pipeline(inference_type="img2img")
 
-        pipe = StableDiffusionImageVariationPipeline.from_pretrained(
-            "lambdalabs/sd-image-variations-diffusers", revision="v2.0", cache_dir=self.model_dir
+        pipe = diffusers.StableDiffusionImageVariationPipeline.from_pretrained(
+            "lambdalabs/sd-image-variations-diffusers",
+            revision="v2.0",
+            cache_dir=self.model_dir,
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
 
@@ -709,14 +677,14 @@ class StableDiffusion(QObject):
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for img in i2i_list:
             initial_img = self.img2pillow(file=img).resize((width, height))
 
             for n in range(n_image):
-                seed = self.random_or_manual_seed("cuda")
+                seed = self.random_or_manual_seed(self.device)
 
                 with torch.inference_mode():
                     image_transformed = transform(initial_img).to("cuda").unsqueeze(0)
@@ -735,16 +703,11 @@ class StableDiffusion(QObject):
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"IV"
-                self.save_images(
-                    image_list=image, seed_list=seed[1], filename=name
-                )
+                self.save_images(image_list=image, seed_list=seed[1], filename=name)
 
         self.img_finished.emit()
 
@@ -769,28 +732,28 @@ class StableDiffusion(QObject):
         ) = self.user_params_for_pipeline(inference_type="img2img")
         img_guidance_scale = float(self.parent.ui.img_guidance_scale_field.text())
 
-        pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
-            "timbrooks/instruct-pix2pix", torch_dtype=torch.float16, cache_dir=self.model_dir
+        pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained(
+            "timbrooks/instruct-pix2pix",
+            torch_dtype=torch.float16,
+            cache_dir=self.model_dir,
         )
 
         self.cpu_offload_check(pipe)
         self.nsfw_check(pipe)
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for n in range(n_image):
             for img in i2i_list:
-                seed = self.random_or_manual_seed("cuda")
+                seed = self.random_or_manual_seed(self.device)
                 initial_img = self.img2pillow(file=img)
 
                 with torch.inference_mode():
@@ -807,21 +770,16 @@ class StableDiffusion(QObject):
                         generator=seed[0],
                         output_type=self.output_type,
                         callback=live_img_preview,
-                        callback_steps=self.callback_step
+                        callback_steps=self.callback_step,
                     ).images
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"IP2P_{positive[:60]}"
-                self.save_images(
-                    image_list=image, seed_list=seed[1], filename=name
-                )
+                self.save_images(image_list=image, seed_list=seed[1], filename=name)
 
         self.img_finished.emit()
 
@@ -846,7 +804,7 @@ class StableDiffusion(QObject):
         ) = self.user_params_for_pipeline(inference_type="img2img")
 
         model_id = "stabilityai/stable-diffusion-2-1-base"
-        pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionImg2ImgPipeline.from_pretrained(
             model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
@@ -857,22 +815,20 @@ class StableDiffusion(QObject):
         self.nsfw_check(pipe)
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for img in i2i_list:
             initial_img = self.img2pillow(file=img)
 
             for n in range(n_image):
-                seed = self.random_or_manual_seed("cuda")
+                seed = self.random_or_manual_seed(self.device)
 
                 with torch.inference_mode():
                     image = pipe(
@@ -893,16 +849,11 @@ class StableDiffusion(QObject):
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
-                        prompt=positive,
-                        latent=image,
-                        steps=steps,
-                        seed=seed[0]
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
                 name = f"I2I_{positive[:60]}"
-                self.save_images(
-                    image_list=image, seed_list=seed[1], filename=name
-                )
+                self.save_images(image_list=image, seed_list=seed[1], filename=name)
 
         self.img_finished.emit()
 
@@ -927,7 +878,7 @@ class StableDiffusion(QObject):
         max_alteration = int(self.parent.ui.max_iter_to_alter_field.text())
 
         model_id = "CompVis/stable-diffusion-v1-4"
-        pipe = StableDiffusionAttendAndExcitePipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionAttendAndExcitePipeline.from_pretrained(
             model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
@@ -937,6 +888,7 @@ class StableDiffusion(QObject):
         self.nsfw_check(pipe)
 
         # finds any words wrapped with single quote
+        import re
         token_words = re.findall('"(.+?)"', positive)
         prompt = positive.replace('"', "")
         token_list = []
@@ -949,19 +901,17 @@ class StableDiffusion(QObject):
         print(f"Selected tokens: {token_list}")
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for n in range(n_image):
-            seed = self.random_or_manual_seed("cuda")
+            seed = self.random_or_manual_seed(self.device)
 
             image = pipe(
                 prompt=pos_prompt,
@@ -977,15 +927,12 @@ class StableDiffusion(QObject):
                 max_iter_to_alter=max_alteration,
                 output_type=self.output_type,
                 callback=live_img_preview,
-                callback_steps=self.callback_step
+                callback_steps=self.callback_step,
             ).images
 
             if self.parent.ui.latent_upscale_2x.isChecked():
                 image = self.latent_upscaler_2x(
-                    prompt=positive,
-                    latent=image,
-                    steps=steps,
-                    seed=seed[0]
+                    prompt=positive, latent=image, steps=steps, seed=seed[0]
                 )
 
             strip_quotes = positive.replace('"', "")
@@ -1013,29 +960,27 @@ class StableDiffusion(QObject):
         ) = self.user_params_for_pipeline()
 
         model_id = "CompVis/stable-diffusion-v1-4"
-        pipe = StableDiffusionPanoramaPipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionPanoramaPipeline.from_pretrained(
             model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
         )
-        pipe.scheduler = DDIMScheduler.from_pretrained(model_id, subfolder="scheduler")
+        pipe.scheduler = diffusers.DDIMScheduler.from_pretrained(model_id, subfolder="scheduler")
 
         self.sequential_cpu_offload_check(pipe)
         self.sliced_vae_check(pipe)
         self.nsfw_check(pipe)
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for n in range(n_image):
-            seed = self.random_or_manual_seed("cuda")
+            seed = self.random_or_manual_seed(self.device)
 
             with torch.inference_mode():
                 image = pipe(
@@ -1051,15 +996,12 @@ class StableDiffusion(QObject):
                     guidance_scale=cfg,
                     output_type=self.output_type,
                     callback=live_img_preview,
-                    callback_steps=self.callback_step
+                    callback_steps=self.callback_step,
                 ).images
 
             if self.parent.ui.latent_upscale_2x.isChecked():
                 image = self.latent_upscaler_2x(
-                    prompt=positive,
-                    latent=image,
-                    steps=steps,
-                    seed=seed[0]
+                    prompt=positive, latent=image, steps=steps, seed=seed[0]
                 )
 
             name = f"MD_{positive[:60]}"
@@ -1089,7 +1031,7 @@ class StableDiffusion(QObject):
         base_path = os.path.abspath("models")
         full_path = os.path.join(base_path, "stable-diffusion-2-1")
 
-        pipe = StableDiffusionPipeline.from_pretrained(
+        pipe = diffusers.StableDiffusionPipeline.from_pretrained(
             full_path, torch_dtype=torch.float16
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
@@ -1101,19 +1043,17 @@ class StableDiffusion(QObject):
         self.nsfw_check(pipe)
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
-            pipe_line=pipe,
-            positive=positive,
-            negative=negative
+            pipe_line=pipe, positive=positive, negative=negative
         )
 
         def live_img_preview(i, t, latents):
             img = pipe.decode_latents(latents)
             img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(1000 - t)
+            self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
         for n in range(n_image):
-            seed = self.random_or_manual_seed("cuda")
+            seed = self.random_or_manual_seed(self.device)
             with torch.inference_mode():
                 image = pipe(
                     prompt=pos_prompt,
@@ -1133,10 +1073,7 @@ class StableDiffusion(QObject):
 
             if self.parent.ui.latent_upscale_2x.isChecked():
                 image = self.latent_upscaler_2x(
-                    prompt=positive,
-                    latent=image,
-                    steps=steps,
-                    seed=seed[0]
+                    prompt=positive, latent=image, steps=steps, seed=seed[0]
                 )
 
             name = f"t2i_{positive[:60]}"
@@ -1146,15 +1083,12 @@ class StableDiffusion(QObject):
 
     @staticmethod
     def latent_upscaler_2x(prompt, latent, steps, seed):
-        upscaler = StableDiffusionLatentUpscalePipeline.from_pretrained(
+        upscaler = diffusers.StableDiffusionLatentUpscalePipeline.from_pretrained(
             "stabilityai/sd-x2-latent-upscaler", torch_dtype=torch.float16
         ).to("cuda")
 
         output_img = upscaler(
-            prompt=prompt,
-            image=latent,
-            num_inference_steps=steps,
-            generator=seed
+            prompt=prompt, image=latent, num_inference_steps=steps, generator=seed
         ).images
         return output_img
 
@@ -1171,7 +1105,7 @@ class StableDiffusion(QObject):
             pipe_line.register_to_config(safety_checker=None)
 
     def save_images(
-            self, image_list: list[Image], seed_list: list[int], filename, suffix=""
+        self, image_list: list[Image], seed_list: list[int], filename, suffix=""
     ) -> None:
         """
         Utility method for saving images from Diffuser pipelines
@@ -1223,7 +1157,7 @@ class StableDiffusion(QObject):
 
     @staticmethod
     def image_grid(
-            images: list[Image], rows: int, columns: int, spacing: int = 20
+        images: list[Image], rows: int, columns: int, spacing: int = 20
     ) -> Image:
         """
         Arranges images into a user defined grid
@@ -1272,8 +1206,8 @@ class StableDiffusion(QObject):
         this method will cover those specific pipelines
         """
         if (
-                self.parent.ui.sequential_cpu_offload_checkbox.isChecked()
-                or self.parent.ui.model_cpu_offload_checkbox.isChecked()
+            self.parent.ui.sequential_cpu_offload_checkbox.isChecked()
+            or self.parent.ui.model_cpu_offload_checkbox.isChecked()
         ):
             pipe_line.enable_sequential_cpu_offload()
         else:

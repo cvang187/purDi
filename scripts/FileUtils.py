@@ -9,10 +9,10 @@ def split_file(path, chunk_size=50000000):
         chunk = f.read(chunk_size)
         while chunk:
             with open(
-                os.path.join(
-                    os.path.dirname(path), filename + ".part" + str(file_number)
-                ),
-                "wb",
+                    os.path.join(
+                        os.path.dirname(path), filename + ".part" + str(file_number)
+                    ),
+                    "wb",
             ) as chunk_file:
                 chunk_file.write(chunk)
             file_number += 1

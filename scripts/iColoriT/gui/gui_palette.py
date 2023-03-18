@@ -9,6 +9,7 @@ class GUIPalette(QWidget):
 
     def __init__(self, grid_sz=(6, 3)):
         QWidget.__init__(self)
+        self.mouseClicked = False
         self.color_width = 25
         self.border = 6
         self.win_width = grid_sz[0] * self.color_width + (grid_sz[0] + 1) * self.border
@@ -31,12 +32,12 @@ class GUIPalette(QWidget):
     def paintEvent(self, event):
         painter = QPainter()
         painter.begin(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(event.rect(), Qt.GlobalColor.white)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(event.rect(), Qt.white)
         if self.colors is not None:
             for n, c in enumerate(self.colors):
                 ca = QColor(c[0], c[1], c[2], 255)
-                painter.setPen(QPen(Qt.GlobalColor.black, 1))
+                painter.setPen(QPen(Qt.black, 1))
                 painter.setBrush(ca)
                 grid_x = n % self.grid_sz[0]
                 grid_y = (n - grid_x) // self.grid_sz[0]
@@ -84,7 +85,7 @@ class GUIPalette(QWidget):
             self.update()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:  # click the point
+        if event.button() == Qt.LeftButton:  # click the point
             color_id = self.selected_color(event.pos())
             self.update_ui(color_id)
             self.mouseClicked = True

@@ -496,6 +496,7 @@ class IColoriT(nn.Module):
         avg_hint=False,
         head_mode="default",
         mask_cent=False,
+        **kwargs
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -506,6 +507,7 @@ class IColoriT(nn.Module):
         self.patch_size = patch_size
         self.in_chans = in_chans
         self.avg_hint = avg_hint
+        self.kwargs = kwargs
 
         # self.mask_token = nn.Parameter(torch.zeros(2))
         # trunc_normal_(self.mask_token, std=.02)

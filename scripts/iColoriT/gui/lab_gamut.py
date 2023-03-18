@@ -26,7 +26,10 @@ def lab2rgb_1d(in_lab, clip=True, dtype="uint8"):
 
 
 def snap_ab(input_l, input_rgb, return_type="rgb"):
-    """given an input lightness and rgb, snap the color into a region where l,a,b is in-gamut"""
+    """
+    given an input lightness and rgb, snap the color into a
+    region where l,a,b is in-gamut
+    """
     T = 20
     warnings.filterwarnings("ignore")
     input_lab = rgb2lab_1d(np.array(input_rgb))  # convert input to lab
@@ -53,6 +56,9 @@ def snap_ab(input_l, input_rgb, return_type="rgb"):
 
 class abGrid:
     def __init__(self, gamut_size=110, D=1):
+        self.masked_rgb = None
+        self.mask = None
+        self.pts_rgb = None
         self.D = D
         self.vals_b, self.vals_a = np.meshgrid(
             np.arange(-gamut_size, gamut_size + D, D),

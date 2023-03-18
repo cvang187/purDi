@@ -1,29 +1,40 @@
-from typing import Union
+import os
+from pprint import pprint
 
 import numpy as np
 import qimage2ndarray
 import torch
 from PIL.Image import Image
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtCore import Signal, QPointF, QPoint, QRectF, QEvent, qWarning, Slot, QRect, QSize
+from PySide6.QtCore import (
+    Signal,
+    QPointF,
+    QRectF,
+    QEvent,
+    qWarning,
+    Slot,
+    QRect,
+)
 from PySide6.QtGui import (
     Qt,
     QPixmap,
     QImage,
     QCursor,
-    QBrush,
     QColor,
     QUndoCommand,
     QMouseEvent,
-    QStandardItemModel, QPainter, QPainterPath,
-)
+    QStandardItemModel,
+    QPainter,
+    QPen, QIcon, )
 from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsPixmapItem,
     QGraphicsItem,
     QSizePolicy,
-    QMenu, QRubberBand, QApplication,
+    QMenu,
+    QApplication,
+    QGraphicsRectItem,
 )
 
 from gui.modules.PurDiToolBoxWidget import PurDiToolBoxWidget
@@ -47,18 +58,15 @@ class UndoRedoItemMoved(QUndoCommand):
             item.setPos(QPointF(x, y))
 
 
-class PurDiGraphicsItem(QGraphicsPixmapItem):
+class PurDiGraphicsPixmapItem(QGraphicsPixmapItem):
     def __init__(self, parent):
         super().__init__(parent)
-
-    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        super().mouseReleaseEvent(event)
-
-    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        super().mouseMoveEvent(event)
+        self.setShapeMode(QGraphicsPixmapItem.HeuristicMaskShape)
+        self.setFlag(
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+            | QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+            enabled=True,
+        )
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         super().mouseDoubleClickEvent(event)
@@ -73,38 +81,76 @@ class PurDiCanvasScene(QGraphicsScene):
 
     def __init__(self, view_rect):
         super().__init__()
-        self.setBackgroundBrush(QBrush(QColor(50, 50, 50)))
         self.old_positions = {}
-        self.image_latent_currently_decoding = []
         self._center_view_pos = view_rect
+        self.image_latent_currently_decoding = []
 
-        # Fix scene not updating latent images as they are added to the scene (animation/live preview)
+        # Fix scene not updating latent images as they are added
+        # to the scene (animation/live preview)
         self.setItemIndexMethod(QGraphicsScene.ItemIndexMethod.NoIndex)
 
-    def drawBackground(
-        self, painter: QtGui.QPainter, rect: Union[QtCore.QRectF, QtCore.QRect]
-    ) -> None:
-        pass
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
+        # out-paint
+        self._start = QPointF()
+        self._mask_rect: QGraphicsRectItem = QGraphicsRectItem()
+        self._mask_image_bounding_rect: QGraphicsRectItem = QGraphicsRectItem()
+        self.drawing_mask_rect: bool = False
 
     def mousePressEvent(self, event):
-        super().mousePressEvent(event)
         if event.button() == Qt.MouseButton.LeftButton:
-            self.old_positions = {idx: idx.pos() for idx in self.selectedItems()}
+            self.old_positions = {index: index.pos() for index in self.selectedItems()}
+
+        key_modifiers = QApplication.keyboardModifiers()
+        shift = Qt.KeyboardModifier.ShiftModifier
+        if (
+            self.itemAt(event.scenePos(), QtGui.QTransform()) is None
+            and key_modifiers & Qt.KeyboardModifier.ShiftModifier == shift
+            and event.button() == Qt.MouseButton.LeftButton
+        ):
+            self.drawing_mask_rect = True
+            self._mask_rect = QGraphicsRectItem()
+
+            rect_pen = QPen()
+            rect_pen.setStyle(Qt.PenStyle.NoPen)
+            rect_pen.setColor(Qt.GlobalColor.white)
+            self._mask_rect.setPen(rect_pen)
+            self._mask_rect.setBrush(QColor(92, 212, 193, 125))
+            self._mask_rect.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+                | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable,
+                True,
+            )
+            self.addItem(self._mask_rect)
+
+            self._start = event.scenePos()
+            mask_size = QRectF(self._start, self._start)
+            self._mask_rect.setRect(mask_size)
+        super(PurDiCanvasScene, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if self._mask_rect is not None and self.drawing_mask_rect:
+            mask_size = QRectF(self._start, event.scenePos()).normalized()
+
+            self._mask_rect.setRect(mask_size)
+
+        super(PurDiCanvasScene, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
         if event.button() == Qt.MouseButton.LeftButton and self.old_positions:
             self.items_moved.emit(
                 self.old_positions,
                 {index: index.pos() for index in self.old_positions.keys()},
             )
         self.old_positions = {}
+
+        if self.drawing_mask_rect:
+            image = self._mask_rect.collidingItems(
+                Qt.ItemSelectionMode.IntersectsItemShape
+            )
+            print(f"items: {image}")
+
+        self._mask_rect = None
+        self.drawing_mask_rect = False
+        super(PurDiCanvasScene, self).mouseReleaseEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Delete and self.selectedItems():
@@ -117,16 +163,24 @@ class PurDiCanvasScene(QGraphicsScene):
             event.ignore()
             super().keyPressEvent(event)
 
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
     def show_image(
         self,
-        image: QImage | QPixmap | Image | torch.Tensor | np.ndarray,
+        image: QImage | QPixmap | QGraphicsRectItem | Image | torch.Tensor | np.ndarray,
+        url: str = None,
         pos: QPointF = None,
-        is_latent: bool = False
+        is_latent: bool = False,
     ) -> None:
         """
         Set the scene's current image pixmap to the input QImage or QPixmap.
         Raises a RuntimeError if the input image has type other than QImage or QPixmap.
         :type image: QImage | QPixmap | Image | torch.Tensor
+        :param url:
         :param pos:
         :param is_latent: True if the image being rendered is image latent from a diffuser pipeline
         """
@@ -160,26 +214,21 @@ class PurDiCanvasScene(QGraphicsScene):
 
         if pixmap and not pixmap.isNull():
             self.zoom.emit()
-            item = PurDiGraphicsItem(pixmap)
-            item.setShapeMode(QGraphicsPixmapItem.HeuristicMaskShape)
-            # item.setFlag(
-            #     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-            #     | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
-            # )
-            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
-
+            item = PurDiGraphicsPixmapItem(pixmap)
+            if isinstance(url, str) and url is not None:
+                item.setData(Qt.ItemDataRole.DisplayRole, url)
             if pos is not None:
                 item.setPos(pos)
             else:
-                width = round(item.boundingRect().width() / 4)
-                height = round(item.boundingRect().height() / 4)
+                item_width_offset = round(item.boundingRect().width() / 4)
+                item_height_offset = round(item.boundingRect().height() / 4)
                 item.setPos(
-                    self._center_view_pos - width,
-                    self._center_view_pos - height
+                    self._center_view_pos - item_width_offset,
+                    self._center_view_pos - item_height_offset,
                 )
                 item.moveBy(
-                    self._center_view_pos - width,
-                    self._center_view_pos - height
+                    self._center_view_pos - item_width_offset,
+                    self._center_view_pos - item_height_offset,
                 )
 
             if is_latent:
@@ -208,7 +257,7 @@ class PurDiCanvasView(QGraphicsView):
     rectChanged = Signal(QRect)
 
     def __init__(self, parent=None):
-        super(PurDiCanvasView, self).__init__()
+        super(PurDiCanvasView, self).__init__(parent)
         self.parent = parent
 
         self._max_canvas_size = 25000
@@ -234,10 +283,10 @@ class PurDiCanvasView(QGraphicsView):
         # self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setCacheMode(QGraphicsView.CacheModeFlag.CacheBackground)
         self.setRenderHint(
-            QPainter.RenderHint.Antialiasing |
-            QPainter.RenderHint.SmoothPixmapTransform |
-            QPainter.RenderHint.LosslessImageRendering,
-            enabled=True
+            QPainter.RenderHint.Antialiasing
+            | QPainter.RenderHint.SmoothPixmapTransform
+            | QPainter.RenderHint.LosslessImageRendering,
+            enabled=True,
         )
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.SmartViewportUpdate)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
@@ -268,14 +317,15 @@ class PurDiCanvasView(QGraphicsView):
         self.scene.zoom.connect(self.reset_zoom)
         self.setUpdatesEnabled(True)
 
-        self.mask_rect = QPainter()
-        self.mask_rect.setPen(QColor.fromRgb(0, 0, 0, 0))
-        self.mask_rect.setBrush(Qt.BrushStyle.CrossPattern)
-        # self.mask_rec_select: QRubberBand = QRubberBand(QRubberBand.Shape.Rectangle, self)
-        self.mask_rect_size: QRect = QRect(0, 0, 0, 0)
-        self.cursor_start_position: QPoint = QPoint()
-        self.cursor_end_position: QPoint = QPoint()
-        self.drawing_mask_rect: bool = False
+        # self.inpainting = False
+        # self.previous_pos = None
+        # self.painter = QPainter()
+        # self.pen = QPen()
+        # self.pen.setWidth(10)
+        # self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        # self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        # self.image_for_inpaint = None
+        # self.pixmap = QPixmap()
 
     def fake_left_mouse_button_for_scrolling(self, event):
         """ScrollHandDrag ONLY works with LeftButton, so fake it.
@@ -291,6 +341,21 @@ class PurDiCanvasView(QGraphicsView):
             self.dummy_modifiers,
         )
         return dummy_event
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        # if self.inpainting:
+        #     with QPainter(self) as painter:
+        #         self.image_for_inpaint = self.scene.selectedItems()[0].boundingRect().toRect()
+        #
+        #         pos = self.scene.selectedItems()[0].scenePos()
+        #         image_width = self.image_for_inpaint.width()
+        #         image_height = self.image_for_inpaint.height()
+        #
+        #         self.pixmap = QPixmap(QSize(image_width, image_height))
+        #
+        #         painter.drawPixmap(pos.x(), pos.y(), self.pixmap)
+
+        QGraphicsView.paintEvent(self, event)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         key_modifiers = QApplication.keyboardModifiers()
@@ -310,33 +375,33 @@ class PurDiCanvasView(QGraphicsView):
             event.accept()
             self._is_panning = True
 
-        elif key_modifiers & Qt.KeyboardModifier.ShiftModifier == shift:
-            if event.button() == self.mouse_left_btn:
-                self.drawing_mask_rect = True
-                self.cursor_start_position = event.pos()
-                # self.mask_rect.setGeometry(
-                #     QRect(self.cursor_start_position, QSize()).normalized()
-                # )
+        # elif key_modifiers & Qt.KeyboardModifier.ShiftModifier == shift:
+        #     if event.button() == self.mouse_left_btn:
+        #         self.drawing_mask_rect = True
+        #         self.cursor_start_position = event.pos()
+        #         # self.mask_rect.setGeometry(
+        #         #     QRect(self.cursor_start_position, QSize()).normalized()
+        #         # )
+        #
+        #         # self.mask_rec_select.show()
+        #         # self.rectChanged.emit(self.mask_rect.geometry())
 
-                # self.mask_rec_select.show()
-                # self.rectChanged.emit(self.mask_rect.geometry())
+        # if self.inpainting:
+        #     self.previous_pos = event.position().toPoint()
 
         QGraphicsView.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if self.drawing_mask_rect:
-            # self.mask_rect.setGeometry(
-            #     QRect(self.cursor_start_position, self.cursor_end_position).normalized()
-            # )
-
-            # self.cursor_end_position = event.pos()
-            # w = self.cursor_start_position.x() - self.cursor_end_position.x()
-            # h = self.cursor_start_position.y() - self.cursor_start_position.y()
-            # self.mask_rect.setGeometry(
-            #     QRect(self.cursor_start_position, QSize(w, h)).normalized()
-            # )
-            self.rectChanged.emit(self.mask_rect_size)
-            # self.rectChanged.emit(self.mask_rect.geometry())
+        # if self.inpainting:
+        #     current_pos = event.position().toPoint()
+        #     self.painter.begin(self.scene.selectedItems()[0])
+        #     self.painter.setRenderHints(QPainter.Antialiasing, True)
+        #     self.painter.setPen(self.pen)
+        #     self.painter.drawLine(self.previous_pos, current_pos)
+        #     self.painter.end()
+        #
+        #     self.previous_pos = current_pos
+        #     self.update()
 
         QGraphicsView.mouseMoveEvent(self, event)
 
@@ -357,24 +422,8 @@ class PurDiCanvasView(QGraphicsView):
             event.accept()
             self._is_panning = False
 
-        elif event.button() == self.mouse_left_btn and self.drawing_mask_rect:
-            self.cursor_end_position = event.pos()
-
-            start_x = self.cursor_start_position.x()
-            start_y = self.cursor_start_position.y()
-            end_x = self.cursor_end_position.x()
-            end_y = self.cursor_end_position.y()
-            self.mask_rect_size = QRect(
-                QPoint(start_x, start_y), QSize(end_x - start_x, end_y - start_y)
-            )
-
-            self.mask_rect.drawRect(self.mask_rect_size)
-            self.drawing_mask_rect = False
-
-            print(f"Image Mask Size: {self.mask_rect_size}")
-            print(f"End POS: x({end_x + start_x}), y({end_y + start_y})")
-            print(f"cursor_start_pos: {self.cursor_start_position}")
-            print(f"cursor_end_pos: {self.cursor_end_position}\n")
+        # self.previous_pos = None
+        # self.inpainting = False
 
         QGraphicsView.mouseReleaseEvent(self, event)
 
@@ -384,6 +433,12 @@ class PurDiCanvasView(QGraphicsView):
             and len(self.scene.selectedItems()) == 1
         ):
             self.fitInView(self.itemAt(event.pos()), Qt.AspectRatioMode.KeepAspectRatio)
+            self.scene.selectedItems()[0].setFlag(
+                # QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                enabled=False,
+            )
+            self.parent.inpainting = True
             return
 
         super().mouseDoubleClickEvent(event)
@@ -399,6 +454,7 @@ class PurDiCanvasView(QGraphicsView):
         try:
             menu = QMenu(self)
             tool_actions = PurDiToolBoxWidget(self)
+            pa = PurDiActions()
         except ModuleNotFoundError:
             print(f"Unable to create QMenu() or PurDiToolBoxWidget()")
         else:
@@ -406,16 +462,84 @@ class PurDiCanvasView(QGraphicsView):
                 menu.addAction(tool_actions.pa.cursor_tool_action)
                 menu.addAction(tool_actions.pa.image_colorizer_action)
                 menu.addAction(tool_actions.pa.blur_background_action)
+
                 menu.exec(event.globalPos())
                 event.accept()
             else:
                 menu.addAction(tool_actions.pa.horizontal_flip_img_action)
                 menu.addAction(tool_actions.pa.vertical_flip_img_action)
+
+                colorizer_icon = os.path.abspath('gui/icons/colorizer.svg')
+                colorizer = pa.create_toolbox_actions(
+                    self,
+                    icon_path=colorizer_icon,
+                    icon_txt='Colorizer',
+                    icon_tool_tip="Re-color image"
+                )
+                menu.addAction(colorizer)
+                colorizer.triggered.connect(self.colorizer)
+
                 menu.exec(event.globalPos())
                 event.accept()
         finally:
             super().contextMenuEvent(event)
             event.ignore()
+
+    # TODO: move into purDi_app
+    def colorizer(self):
+        """
+        A nice CNN to change an image's color. Eventually move it out of a
+        pop-up dock widget and into the main UI. For now, quick and dirty
+        implementation.
+        """
+        import os
+        from timm.models import create_model
+        import scripts.iColoriT.modeling
+        from scripts.iColoriT import gui_main
+
+        import warnings
+        warnings.filterwarnings("ignore", category=UserWarning)
+
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model_name = 'icolorit_base_4ch_patch16_224'
+        model_dir = os.path.join(os.path.abspath('models'), f"{model_name}.pth")
+
+        img = self.scene.selectedItems()[0]
+        if isinstance(img, QGraphicsItem):
+            try:
+                model = create_model(
+                    model_name=model_name,
+                    checkpoint_path=model_dir,
+                    pretrained=False,
+                    drop_path_rate=0.0,
+                    drop_block_rate=None,
+                    use_rpb=True,
+                    avg_hint=True,
+                    head_mode="cnn",
+                    mask_cent=False,
+                )
+                model.to(device)
+                checkpoint = torch.load(
+                    model_dir,
+                    map_location=torch.device(device)
+                )
+                model.load_state_dict(checkpoint['model'], strict=False)
+                model.eval()
+            except ValueError:
+                pass
+            else:
+                img = img.data(Qt.ItemDataRole.DisplayRole)
+                popup = gui_main.IColorDockWidget(
+                    color_model=model,
+                    img_file=img,
+                    load_size=224,
+                    win_size=600,
+                    device=device,
+                    parent=self
+                )
+                popup.show()
+
+                # TODO: delete model....
 
     @Slot()
     def reset_zoom(self):
@@ -476,7 +600,11 @@ class PurDiCanvasView(QGraphicsView):
                     pixmap_list.append(image)
         finally:
             for index, url in enumerate(pixmap_list):
-                self.scene.show_image(QPixmap(url), scene_pos)
+                self.scene.show_image(
+                    image=QPixmap(url),
+                    url=url,
+                    pos=scene_pos
+                )
                 event.accept()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:

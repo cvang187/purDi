@@ -2,22 +2,39 @@
 import os.path
 
 import torch
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import (
     Qt,
     Slot,
     QSettings,
     QDir,
     QThreadPool,
-    QSize, QRunnable,
+    QSize,
+    QRunnable,
 )
-from PySide6.QtGui import QUndoStack, QStandardItemModel, QIcon, QMoveEvent
+from PySide6.QtGui import (
+    QUndoStack,
+    QStandardItemModel,
+    QIcon,
+    QMoveEvent,
+    QPainter,
+    QPen,
+    QBrush,
+    QPixmap,
+    QColor,
+)
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QComboBox,
-    QButtonGroup, QWidget, QMenu, QToolButton, )
+    QButtonGroup,
+    QWidget,
+    QMenu,
+    QToolButton,
+    QGraphicsRectItem,
+    QGraphicsItem,
+)
 from qt_material import QtStyleTools
 
 from gui.modules.PurDiCanvas import PurDiCanvasView, UndoRedoItemMoved
@@ -36,14 +53,14 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
     def __init__(self):
         super().__init__()
         self.ui_loader = QUiLoader()
-        self.ui_loader.load('gui/form.ui', self)
+        self.ui_loader.load("gui/form.ui", self)
         self.ui = Ui_BasePurDi()
         self.ui.setupUi(self)
         self.threadpool = QThreadPool(self)
         self.sd_inference = StableDiffusion(self)
         self.pa = PurDiActions()
         self.settings = QSettings("PurDi", "PurDi")
-        self.setWindowIcon(QIcon('gui/icons/app_icon.png'))
+        self.setWindowIcon(QIcon("gui/icons/app_icon.png"))
         self.setWindowOpacity(1)
         # self.m_widgets = {}
 
@@ -85,9 +102,9 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
         self.menu_file = QMenu()
         self.menu_file_button = self.pa.create_toolbox_buttons(
-            icon_path='gui/icons/feather/align-justify.svg',
-            icon_txt='',
-            icon_tool_tip='',
+            icon_path="gui/icons/feather/align-justify.svg",
+            icon_txt="",
+            icon_tool_tip="",
         )
         self.menu_file_button.setStyleSheet(
             """
@@ -116,10 +133,14 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.menu_file.addAction(self.ui.actionSave)
         self.menu_file.addAction(self.ui.actionSettings)
 
-        self.menu_edit = QMenu('Edit')
+        self.menu_edit = QMenu("Edit")
         self.undoStack = QUndoStack()
-        self.menu_edit.addAction(self.undoStack.createUndoAction(self.image_viewer.scene))
-        self.menu_edit.addAction(self.undoStack.createRedoAction(self.image_viewer.scene))
+        self.menu_edit.addAction(
+            self.undoStack.createUndoAction(self.image_viewer.scene)
+        )
+        self.menu_edit.addAction(
+            self.undoStack.createRedoAction(self.image_viewer.scene)
+        )
 
         self.menu_file.addMenu(self.menu_edit)
 
@@ -245,9 +266,20 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         )
 
         if os.path.exists("my_theme.xml"):
-            self.apply_stylesheet(self, 'my_theme.xml')
+            self.apply_stylesheet(self, "my_theme.xml")
         else:
-            self.apply_stylesheet(self, 'dark_teal.xml')
+            self.apply_stylesheet(self, "dark_teal.xml")
+
+        self.full_screen = False
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_F11:
+            if not self.full_screen:
+                self.showFullScreen()
+                self.full_screen = True
+                return
+            self.showNormal()
+            self.full_screen = False
 
     @Slot()
     def inference(self):
@@ -285,7 +317,11 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         ):
             file_path = model.absoluteFilePath()
             model_name = (
-                model.baseName().replace('--', ' ').replace('-', ' ').strip('models').lower()
+                model.baseName()
+                .replace("--", " ")
+                .replace("-", " ")
+                .strip("models")
+                .lower()
             )
             display_name = f"{model_name}"
             icon = QIcon("gui/icons/select_rect.svg")
@@ -295,9 +331,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
             )
 
         # remove
-        excluded_models = [
-            'controlnet', 'lambdalabs sd image variations', 'timbrooks'
-        ]
+        excluded_models = ["controlnet", "lambdalabs sd image variations", "timbrooks"]
         for model in excluded_models:
             folder = self.select_model_drop_down_box.findText(
                 model, Qt.MatchFlag.MatchContains
@@ -445,63 +479,63 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
     def add_ui_icons(self):
         inference_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/aperture.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/aperture.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(0, inference_tab_icon)
         train_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/cpu.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/cpu.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(1, train_tab_icon)
         chat_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/message-square.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/message-square.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(2, chat_tab_icon)
         general_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/settings.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/settings.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(3, general_tab_icon)
         txt_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/align-right.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/align-right.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(0, txt_tab_icon)
         image_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/image.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/image.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(1, image_tab_icon)
         inf_general_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/battery-charging.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/battery-charging.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(2, inf_general_tab_icon)
         image_browser_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/grid.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/grid.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.left_tab_widget.setTabIcon(0, image_browser_tab_icon)
         prompt_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/activity.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/activity.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.left_tab_widget.setTabIcon(1, prompt_tab_icon)
         history_tab_icon = self.pa.set_icon_color(
-            icon_path='gui/icons/feather/list.svg',
-            replace_color='black',
-            new_color='white'
+            icon_path="gui/icons/feather/list.svg",
+            replace_color="black",
+            new_color="white",
         )
         self.ui.left_tab_widget.setTabIcon(2, history_tab_icon)
 
@@ -515,8 +549,12 @@ class StableDiffusionRunnable(QRunnable):
 
         self.sd_inference.img_started.connect(self.parent.disable_generate_img_button)
 
-        self.sd_inference.img_finished.connect(self.parent.re_enable_generate_img_button)
-        self.sd_inference.img_finished.connect(self.parent.ui.image_browser.generate_cache)
+        self.sd_inference.img_finished.connect(
+            self.parent.re_enable_generate_img_button
+        )
+        self.sd_inference.img_finished.connect(
+            self.parent.ui.image_browser.generate_cache
+        )
         self.sd_inference.img_finished.connect(
             self.parent.image_viewer.scene.delete_latents_from_scene
         )
@@ -528,8 +566,8 @@ class StableDiffusionRunnable(QRunnable):
         """
 
         if (
-                self.parent.ui.img2img_select_box.count() >= 1
-                or len(self.parent.image_viewer.scene.selectedItems()) >= 1
+            self.parent.ui.img2img_select_box.count() >= 1
+            or len(self.parent.image_viewer.scene.selectedItems()) >= 1
         ):
             if self.parent.ui.controlnet_checkbox.isChecked():
                 controlnet_current_selection = (
@@ -588,7 +626,7 @@ def main():
 
     window.ui.right_top_dock_widget.setFixedWidth(400)
     window.show()
-    window.resize(QtCore.QSize(1920, 1080))
+    # window.resize(QtCore.QSize(1920, 1080))
     sys.exit(app.exec())
 
 

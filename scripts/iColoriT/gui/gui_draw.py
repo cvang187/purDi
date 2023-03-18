@@ -12,12 +12,12 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QFileDialog, QWidget
 from skimage import color
 
-from ColorizerLabGamut import snap_ab
-from ColorizerUiControl import UIControl
+from gui.modules.PurDiCanvas import PurDiGraphicsPixmapItem
+from .lab_gamut import snap_ab
+from .ui_control import UIControl
 
 
 class GUIDraw(QWidget):
-    # Signals
     update_color = Signal(str)
     update_gammut = Signal(object)
     used_colors = Signal(object)
@@ -26,6 +26,28 @@ class GUIDraw(QWidget):
 
     def __init__(self, model=None, load_size=224, win_size=512, device="cpu"):
         QWidget.__init__(self)
+        self.result = None
+        self.user_color = None
+        self.color = None
+        self.brushWidth = None
+        self.im_mask0 = None
+        self.im_ab0 = None
+        self.im_size = None
+        self.im_ab = None
+        self.l_win = None
+        self.im_l = None
+        self.im_lab = None
+        self.im_rgb = None
+        self.gray_win = None
+        self.win_h = None
+        self.win_w = None
+        self.dh = None
+        self.dw = None
+        self.im_win = None
+        self.scale = None
+        self.im_full = None
+        self.img_list = []
+        self.count_secs = 0
         self.image_file = None
         self.pos = None
         self.model = model
@@ -44,15 +66,14 @@ class GUIDraw(QWidget):
         self.use_gray = True
         self.total_images = 0
         self.image_id = 0
-        self.saveResult = False
 
     def clock_count(self):
         self.count_secs -= 1
         self.update()
 
-    def init_result(self, im_bgr):
+    def init_result(self, image_file):
         # self.read_image(image_file.encode('utf-8'))  # read an image
-        self.read_image(im_bgr)  # read an image
+        self.read_image(image_file)  # read an image
         self.reset()
 
     def get_batches(self, img_dir):
@@ -61,7 +82,7 @@ class GUIDraw(QWidget):
         img_first = self.img_list[0]
         self.init_result(img_first)
 
-    def nextImage(self):
+    def next_image(self):
         self.save_result()
         self.image_id += 1
         if self.image_id == self.total_images:
@@ -72,14 +93,18 @@ class GUIDraw(QWidget):
         self.init_result(img_current)
         self.reset_timer()
 
-    def read_image(self, im_bgr):
+    def reset_timer(self):
+        self.count_secs = 0
+
+    def read_image(self, image_file):
         # self.result = None
         self.image_loaded = True
+        self.image_file = image_file
+        im_bgr = cv2.imread(image_file)
         self.im_full = im_bgr.copy()
+
         # get image for display
         h, w, c = self.im_full.shape
-        ar = float(w) / float(h)
-
         max_width = max(h, w)
         r = self.win_size / float(max_width)
         self.scale = float(self.win_size) / self.load_size
@@ -93,12 +118,7 @@ class GUIDraw(QWidget):
         self.dh = int((self.win_size - rh) // 2)
         self.win_w = rw
         self.win_h = rh
-
-        print("rw,rh", (rw, rh))
-        print("dw,dh", (self.dw, self.dh))
-        print("w,h", (w, h))
-
-        self.uiControl.setImageSize((rw, rh))
+        self.uiControl.set_image_size((rw, rh))
         im_gray = cv2.cvtColor(im_bgr, cv2.COLOR_BGR2GRAY)
         self.im_gray3 = cv2.cvtColor(im_gray, cv2.COLOR_GRAY2BGR)
 
@@ -136,11 +156,11 @@ class GUIDraw(QWidget):
 
         if self.ui_mode == "point":
             if move_point:
-                self.uiControl.movePoint(
+                self.uiControl.move_point(
                     self.pos, snap_qcolor, self.user_color, self.brushWidth
                 )
             else:
-                self.user_color, self.brushWidth, isNew = self.uiControl.addPoint(
+                self.user_color, self.brushWidth, isNew = self.uiControl.add_point(
                     self.pos, snap_qcolor, self.user_color, self.brushWidth
                 )
                 if isNew:
@@ -148,12 +168,16 @@ class GUIDraw(QWidget):
                     # self.predict_color()
 
         if self.ui_mode == "stroke":
-            self.uiControl.addStroke(
-                self.prev_pos, self.pos, snap_qcolor, self.user_color, self.brushWidth
+            self.uiControl.add_stroke(
+                self.prev_pos,
+                self.pos,
+                snap_qcolor,
+                self.user_color,
+                self.brushWidth
             )
         if self.ui_mode == "erase":
-            isRemoved = self.uiControl.erasePoint(self.pos)
-            if isRemoved:
+            is_removed = self.uiControl.erase_point(self.pos)
+            if is_removed:
                 is_predict = True
                 # self.predict_color()
         return is_predict
@@ -172,7 +196,6 @@ class GUIDraw(QWidget):
     def scale_point(self, pnt):
         x = int((pnt.x() - self.dw) / float(self.win_w) * self.load_size)
         y = int((pnt.y() - self.dh) / float(self.win_h) * self.load_size)
-        print(pnt, (x, y))
         return x, y
 
     def valid_point(self, pnt):
@@ -181,10 +204,8 @@ class GUIDraw(QWidget):
             return None
         else:
             if (
-                pnt.x() >= self.dw
-                and pnt.y() >= self.dh
-                and pnt.x() < self.win_size - self.dw
-                and pnt.y() < self.win_size - self.dh
+                self.dw <= pnt.x() < self.win_size - self.dw
+                and self.dh <= pnt.y() < self.win_size - self.dh
             ):
                 x = int(np.round(pnt.x()))
                 y = int(np.round(pnt.y()))
@@ -197,8 +218,7 @@ class GUIDraw(QWidget):
         self.user_color = QColor(128, 128, 128)  # default color red
         self.color = self.user_color
 
-    def change_color(self, pos=None, **kwargs):
-        print("Changing color at", pos)
+    def change_color(self, pos=None):
         if pos is not None:
             x, y = self.scale_point(pos)
             L = self.im_lab[y, x, 0]
@@ -221,8 +241,8 @@ class GUIDraw(QWidget):
 
         # snap color based on L color
         color_array = np.array((c.red(), c.green(), c.blue())).astype("uint8")
-        mean_L = self.im_l[y, x]
-        snap_color = snap_ab(mean_L, color_array)
+        mean_l = self.im_l[y, x]
+        snap_color = snap_ab(mean_l, color_array)
         snap_qcolor = QColor(snap_color[0], snap_color[1], snap_color[2])
         return snap_qcolor
 
@@ -245,7 +265,22 @@ class GUIDraw(QWidget):
             self.init_result(img_path)
 
     def save_result(self):
-        self.saveResult = True
+        path = os.path.abspath(self.image_file)
+        path, ext = os.path.splitext(path)
+        print(path, ext)
+
+        # suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        save_path = "_".join([path, "colorized.png"])
+        print(save_path)
+
+        print(f"saving result to {save_path}")
+        # if not os.path.exists(save_path):
+        #     os.mkdir(save_path)
+
+        result_bgr = cv2.cvtColor(self.result, cv2.COLOR_RGB2BGR)
+        # mask = self.im_mask0.transpose((1, 2, 0)).astype(np.uint8) * 255
+        # cv2.imwrite(os.path.join(save_path, "input_mask.png"), mask)
+        cv2.imwrite(save_path, result_bgr)
 
     def enable_gray(self):
         self.use_gray = not self.use_gray
@@ -281,6 +316,7 @@ class GUIDraw(QWidget):
             p1=self.model.patch_size,
             p2=self.model.patch_size,
         )[0]
+
         if torch.cuda.is_available():
             ab = ab.cpu()
         ab = ab.detach().numpy()
@@ -298,30 +334,30 @@ class GUIDraw(QWidget):
         painter = QPainter()
         painter.begin(self)
         painter.fillRect(event.rect(), QColor(49, 54, 49))
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
         if self.use_gray or self.result is None:
             im = self.gray_win
         else:
             im = self.result
 
         if im is not None:
-            qImg = QImage(
-                im.tostring(), im.shape[1], im.shape[0], QImage.Format.Format_RGB888
+            q_img = QImage(
+                im.tostring(), im.shape[1], im.shape[0], QImage.Format_RGB888
             )
-            painter.drawImage(self.dw, self.dh, qImg)
+            painter.drawImage(self.dw, self.dh, q_img)
 
         self.uiControl.update_painter(painter)
         painter.end()
 
-    def wheelEvent(self, event):
-        d = event.angleDelta().y() / 120
-        self.brushWidth = min(
-            4.05 * self.scale, max(0, self.brushWidth + d * self.scale)
-        )
-        self.update_ui(move_point=True)
-        self.update()
+    # def wheelEvent(self, event):
+    #     d = event.delta() / 120
+    #     self.brushWidth = min(4.05 * self.scale, max(0, self.brushWidth + d * self.scale))
+    #     print('update brushWidth = %f' % self.brushWidth)
+    #     self.update_ui(move_point=True)
+    #     self.update()
 
-    def is_same_point(self, pos1, pos2):
+    @staticmethod
+    def is_same_point(pos1, pos2):
         if pos1 is None or pos2 is None:
             return False
         dx = pos1.x() - pos2.x()
@@ -335,14 +371,14 @@ class GUIDraw(QWidget):
         pos = self.valid_point(event.pos())
 
         if pos is not None:
-            if event.button() == Qt.MouseButton.LeftButton:
+            if event.button() == Qt.LeftButton:
                 self.pos = pos
                 self.ui_mode = "point"
                 self.change_color(pos)
                 self.update_ui(move_point=False)
                 self.compute_result()
 
-            if event.button() == Qt.MouseButton.RightButton:
+            if event.button() == Qt.RightButton:
                 # draw the stroke
                 self.pos = pos
                 self.ui_mode = "erase"

@@ -1168,7 +1168,7 @@
           <enum>QTabWidget::East</enum>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>3</number>
          </property>
          <property name="usesScrollButtons">
           <bool>true</bool>
@@ -1773,8 +1773,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>237</width>
+                       <height>137</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1841,8 +1841,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>97</width>
+                       <height>313</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1885,8 +1885,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>257</width>
+                       <height>105</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2236,8 +2236,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>429</height>
+                       <width>185</width>
+                       <height>226</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2985,8 +2985,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>636</height>
+                       <width>116</width>
+                       <height>318</height>
                       </rect>
                      </property>
                      <attribute name="label">

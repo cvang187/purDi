@@ -1,7 +1,9 @@
 # https://stackoverflow.com/questions/50775036/pyqt-qgraphicsview-dark-area-outside-rectangle
 
 import sys
+from typing import Optional
 
+import PySide6
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QBrush, QColor, QPen, QPixmap, QPainterPath, QPainter
 from PySide6.QtWidgets import (
@@ -44,7 +46,9 @@ class HandleItem(QGraphicsRectItem):
     def positionflags(self):
         return self._positionFlags
 
-    def itemChange(self, change, value):
+    def itemChange(
+        self, change: PySide6.QtWidgets.QGraphicsItem.GraphicsItemChange, value: Any
+    ) -> Any:
         retVal = value
         if change == self.GraphicsItemChange.ItemPositionChange:
             retVal = self.restrictPosition(value)
@@ -156,13 +160,18 @@ class SizeGripItem(QGraphicsItem):
 
         self.updateHandleItemPositions()
 
-    def boundingRect(self):
+    def boundingRect(self) -> PySide6.QtCore.QRectF:
         if self.parentItem():
             return self._rect
         else:
             return QRectF(0, 0, 0, 0)
 
-    def paint(self, painter, option, widget):
+    def paint(
+        self,
+        painter: PySide6.QtGui.QPainter,
+        option: PySide6.QtWidgets.QStyleOptionGraphicsItem,
+        widget: Optional[PySide6.QtWidgets.QWidget] = ...,
+    ) -> None:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(QPen(QColor(127, 127, 127), 2.0, Qt.PenStyle.DashLine))
         painter.drawRect(self._rect)

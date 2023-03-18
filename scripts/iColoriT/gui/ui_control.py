@@ -36,33 +36,39 @@ class UserEdit(object):
 class PointEdit(UserEdit):
     def __init__(self, win_size, load_size, img_size):
         UserEdit.__init__(self, "point", win_size, load_size, img_size)
+        self.width = None
+        self.user_color = None
+        self.color = None
+        self.pnt = None
 
-    def add(self, pnt, color, userColor, width, ui_count):
+    def add(self, pnt, color, user_color, width, ui_count):
         self.pnt = pnt
         self.color = color
-        self.userColor = userColor
+        self.user_color = user_color
         self.width = width
         self.ui_count = ui_count
 
     def select_old(self, pnt, ui_count):
         self.pnt = pnt
         self.ui_count = ui_count
-        return self.userColor, self.width
+        return self.user_color, self.width
 
-    def update_color(self, color, userColor):
+    def update_color(self, color, user_color):
         self.color = color
-        self.userColor = userColor
+        self.user_color = user_color
 
-    def updateInput(self, im, mask, vis_im):
+    def update_input(self, im, mask, vis_im):
         w = int(self.width / self.scale)
-        pnt = self.pnt
-        x1, y1 = self.scale_point(pnt.x(), pnt.y(), -w)
+        point = self.pnt
+        x1, y1 = self.scale_point(point.x(), point.y(), -w)
         tl = (x1, y1)
-        # x2, y2 = self.scale_point(pnt.x(), pnt.y(), w)
+
+        # x2, y2 = self.scale_point(point.x(), point.y(), w)
         # br = (x2, y2)
+
         br = (x1 + 1, y1 + 1)  # hint size fixed to 2
         c = (self.color.red(), self.color.green(), self.color.blue())
-        uc = (self.userColor.red(), self.userColor.green(), self.userColor.blue())
+        uc = (self.user_color.red(), self.user_color.green(), self.user_color.blue())
         cv2.rectangle(mask, tl, br, 255, -1)
         cv2.rectangle(im, tl, br, c, -1)
         cv2.rectangle(vis_im, tl, br, uc, -1)
@@ -84,90 +90,87 @@ class PointEdit(UserEdit):
             (255 - r) * (255 - r) + (255 - g) * (255 - g) + (255 - r) * (255 - r)
         )
         if d_to_black > d_to_white:
-            painter.setPen(QPen(Qt.GlobalColor.black, 1))
+            painter.setPen(QPen(Qt.black, 1))
         else:
-            painter.setPen(QPen(Qt.GlobalColor.white, 1))
+            painter.setPen(QPen(Qt.white, 1))
         painter.setBrush(ca)
         painter.drawRoundedRect(
-            int(self.pnt.x() - w),
-            int(self.pnt.y() - w),
-            int(1 + 2 * w),
-            int(1 + 2 * w),
-            2,
-            2,
+            self.pnt.x() - w, self.pnt.y() - w, 1 + 2 * w, 1 + 2 * w, 2, 2
         )
 
 
 class UIControl:
     def __init__(self, win_size=256, load_size=224):
+        self.img_size = None
         self.win_size = win_size
         self.load_size = load_size
         self.reset()
-        self.userEdit = None
+        self.user_edit = None
         self.userEdits = []
         self.ui_count = 0
 
-    def setImageSize(self, img_size):
+    def set_image_size(self, img_size):
         self.img_size = img_size
 
-    def addStroke(self, prevPnt, nextPnt, color, userColor, width):
+    def add_stroke(self, prev_point, next_point, color, user_color, width):
         pass
 
-    def erasePoint(self, pnt):
-        isErase = False
+    def erase_point(self, pnt):
+        is_erase = False
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
                 self.userEdits.remove(ue)
                 print("remove user edit %d\n" % id)
-                isErase = True
+                is_erase = True
                 break
-        return isErase
+        return is_erase
 
-    def addPoint(self, pnt, color, userColor, width):
+    def add_point(self, pnt, color, user_color, width):
         self.ui_count += 1
         print("process add Point")
-        self.userEdit = None
-        isNew = True
+        self.user_edit = None
+        is_new = True
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
-                self.userEdit = ue
-                isNew = False
+                self.user_edit = ue
+                is_new = False
                 print("select user edit %d\n" % id)
                 break
 
-        if self.userEdit is None:
-            self.userEdit = PointEdit(self.win_size, self.load_size, self.img_size)
-            self.userEdits.append(self.userEdit)
+        if self.user_edit is None:
+            self.user_edit = PointEdit(self.win_size, self.load_size, self.img_size)
+            self.userEdits.append(self.user_edit)
             print("add user edit %d\n" % len(self.userEdits))
-            self.userEdit.add(pnt, color, userColor, width, self.ui_count)
-            return userColor, width, isNew
+            self.user_edit.add(pnt, color, user_color, width, self.ui_count)
+            return user_color, width, is_new
         else:
-            userColor, width = self.userEdit.select_old(pnt, self.ui_count)
-            return userColor, width, isNew
+            user_color, width = self.user_edit.select_old(pnt, self.ui_count)
+            return user_color, width, is_new
 
-    def movePoint(self, pnt, color, userColor, width):
-        self.userEdit.add(pnt, color, userColor, width, self.ui_count)
+    def move_point(self, pnt, color, user_color, width):
+        self.user_edit.add(pnt, color, user_color, width, self.ui_count)
 
-    def update_color(self, color, userColor):
-        self.userEdit.update_color(color, userColor)
+    def update_color(self, color, user_color):
+        self.user_edit.update_color(color, user_color)
 
     def update_painter(self, painter):
         for ue in self.userEdits:
             if ue is not None:
                 ue.update_painter(painter)
 
-    def get_stroke_image(self, im):
+    @staticmethod
+    def get_stroke_image(im):
         return im
 
     def used_colors(self):  # get recently used colors
         if len(self.userEdits) == 0:
             return None
-        nEdits = len(self.userEdits)
-        ui_counts = np.zeros(nEdits)
-        ui_colors = np.zeros((nEdits, 3))
+        n_edits = len(self.userEdits)
+        ui_counts = np.zeros(n_edits)
+        ui_colors = np.zeros((n_edits, 3))
         for n, ue in enumerate(self.userEdits):
             ui_counts[n] = ue.ui_count
-            c = ue.userColor
+            c = ue.user_color
             ui_colors[n, :] = [c.red(), c.green(), c.blue()]
 
         ui_counts = np.array(ui_counts)
@@ -196,11 +199,11 @@ class UIControl:
         vis_im = np.zeros((h, w, 3), np.uint8)
 
         for ue in self.userEdits:
-            ue.updateInput(im, mask, vis_im)
+            ue.update_input(im, mask, vis_im)
 
         return im, mask
 
     def reset(self):
         self.userEdits = []
-        self.userEdit = None
+        self.user_edit = None
         self.ui_count = 0
