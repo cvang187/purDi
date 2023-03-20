@@ -264,7 +264,7 @@ class PurDiCanvasView(QGraphicsView):
     def __init__(self, parent=None):
         super(PurDiCanvasView, self).__init__(parent)
         self.parent = parent
-        self.bg_remove_mask_only = False
+        self.bg_remove_mask_only = True
         self.bg_remove_model = "u2net_cloth_seg"
 
         self._max_canvas_size = 25000
@@ -514,24 +514,7 @@ class PurDiCanvasView(QGraphicsView):
         img_name = img_name[:-4]
 
         image = ImageQt.fromqpixmap(pixmap)
-        session = new_session(base_model_name=self.bg_remove_model)
-
-        if not self.bg_remove_mask_only:
-            result = remove(
-                data=image,
-                alpha_matting=False,
-                alpha_matting_foreground_threshold=240,
-                alpha_matting_background_threshold=10,
-                alpha_matting_erode_size=10,
-                session=session,
-                only_mask=False,
-                post_process_mask=False,
-            )
-
-            result.save(os.path.join(path, f"{img_name[:50]}_extracted.png"), "png")
-            self.scene.show_image(result)
-            self.image_processed.emit()
-            return
+        session = new_session(model_name=self.bg_remove_model)
 
         result = remove(
             data=image,
@@ -540,7 +523,7 @@ class PurDiCanvasView(QGraphicsView):
             alpha_matting_background_threshold=10,
             alpha_matting_erode_size=10,
             session=session,
-            only_mask=True,
+            only_mask=self.bg_remove_mask_only,
             post_process_mask=True,
         )
 
@@ -552,12 +535,14 @@ class PurDiCanvasView(QGraphicsView):
                 0,
                 2,
             ):  # if not all white/black mask
-                mask = PIL.Image.fromarray(m).convert("RGB")
-                inverted_mask = PIL.ImageChops.invert(mask)
+                mask = PIL.Image.fromarray(m)
+                if self.bg_remove_mask_only:
+                    mask = mask.convert("RGB")
+                    mask = PIL.ImageChops.invert(mask)
 
-                self.scene.show_image(inverted_mask)
+                self.scene.show_image(mask)
                 file_name = os.path.join(path, f"{img_name[:50]}_mask_{i}.png")
-                inverted_mask.save(file_name)
+                mask.save(file_name)
 
         self.image_processed.emit()
 
