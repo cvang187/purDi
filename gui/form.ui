@@ -1253,7 +1253,7 @@
               <enum>QTabWidget::South</enum>
              </property>
              <property name="currentIndex">
-              <number>0</number>
+              <number>1</number>
              </property>
              <property name="elideMode">
               <enum>Qt::ElideLeft</enum>
@@ -1773,8 +1773,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>237</width>
+                       <height>137</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1841,8 +1841,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>97</width>
+                       <height>313</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1885,8 +1885,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>257</width>
+                       <height>105</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2127,7 +2127,7 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>1</number>
+                     <number>5</number>
                     </property>
                     <widget class="QWidget" name="page">
                      <property name="geometry">
@@ -2375,11 +2375,25 @@
                        </layout>
                       </item>
                       <item>
-                       <widget class="QCheckBox" name="controlnet_checkbox">
-                        <property name="text">
-                         <string>Enable</string>
+                       <layout class="QHBoxLayout" name="horizontalLayout_12">
+                        <property name="topMargin">
+                         <number>0</number>
                         </property>
-                       </widget>
+                        <item>
+                         <widget class="QCheckBox" name="controlnet_checkbox">
+                          <property name="text">
+                           <string>Enable</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QCheckBox" name="save_controlnet_input_maps_checkbox">
+                          <property name="text">
+                           <string>Save Map</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
                       </item>
                      </layout>
                     </widget>
@@ -2499,8 +2513,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>93</width>
-                       <height>276</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2551,13 +2565,31 @@
                       </item>
                      </layout>
                     </widget>
+                    <widget class="QWidget" name="page_7">
+                     <attribute name="label">
+                      <string>In-painting</string>
+                     </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_38">
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_13">
+                        <item>
+                         <widget class="QCheckBox" name="inpaint_checkbox">
+                          <property name="text">
+                           <string>Enable</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </widget>
                     <widget class="QWidget" name="instruct_pix2pix_widget">
                      <property name="geometry">
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>136</width>
-                       <height>272</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2941,8 +2973,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>98</width>
-                       <height>302</height>
+                       <width>86</width>
+                       <height>350</height>
                       </rect>
                      </property>
                      <attribute name="label">

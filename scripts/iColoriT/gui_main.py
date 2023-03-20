@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QVBoxLayout,
-    QWidget, QDockWidget, )
+    QWidget,
+    QDockWidget,
+)
 
 from scripts.iColoriT.gui.gui_draw import GUIDraw
 from scripts.iColoriT.gui.gui_gamut import GUIGamut
@@ -20,31 +22,29 @@ from scripts.iColoriT.gui.gui_vis import GUI_VIS
 
 class IColorDockWidget(QDockWidget):
     def __init__(
-            self,
-            color_model,
-            img_file=None,
-            load_size=221,
-            win_size=720,
-            device='cpu',
-            parent=None
+        self,
+        color_model,
+        img_file=None,
+        load_size=221,
+        win_size=720,
+        device="cpu",
+        parent=None,
     ):
         super(IColorDockWidget, self).__init__(parent)
         self.parent = parent
-        self.color_ui = IColoriTUI(
-            color_model, img_file, load_size, win_size, device
-        )
+        self.color_ui = IColoriTUI(color_model, img_file, load_size, win_size, device)
         self.setWidget(self.color_ui)
         self.setFloating(True)
         self.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetMovable |
-            QDockWidget.DockWidgetFeature.DockWidgetVerticalTitleBar
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetVerticalTitleBar
         )
         self.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea |
-            Qt.DockWidgetArea.RightDockWidgetArea |
-            Qt.DockWidgetArea.BottomDockWidgetArea
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+            | Qt.DockWidgetArea.BottomDockWidgetArea
         )
-        self.setWindowIcon(QIcon('gui/icon.png'))
+        self.setWindowIcon(QIcon("gui/icon.png"))
         self.setWindowTitle("iColoriT")
 
 
@@ -52,7 +52,13 @@ class IColoriTUI(QWidget):
     image_ready = Signal()
 
     def __init__(
-            self, color_model, img_file=None, load_size=224, win_size=256, device='cpu', parent=None
+        self,
+        color_model,
+        img_file=None,
+        load_size=224,
+        win_size=256,
+        device="cpu",
+        parent=None,
     ):
         # draw the layout
         super(IColoriTUI, self).__init__(parent)
@@ -64,7 +70,7 @@ class IColoriTUI(QWidget):
 
         # gamut layout
         self.gamutWidget = GUIGamut(gamut_size=110)
-        gamut_layout = self.add_widget(self.gamutWidget, 'ab Color Gamut')
+        gamut_layout = self.add_widget(self.gamutWidget, "ab Color Gamut")
         color_layout = QVBoxLayout()
 
         color_layout.addLayout(gamut_layout)
@@ -72,14 +78,14 @@ class IColoriTUI(QWidget):
 
         # palette
         self.usedPalette = GUIPalette(grid_sz=(10, 3))
-        up_layout = self.add_widget(self.usedPalette, 'Recently used colors')
+        up_layout = self.add_widget(self.usedPalette, "Recently used colors")
         color_layout.addLayout(up_layout)
 
         self.colorPush = QPushButton()  # to visualize the selected color
         self.colorPush.setFixedWidth(self.usedPalette.width())
         self.colorPush.setFixedHeight(35)
         self.colorPush.setStyleSheet("background-color: grey")
-        color_push_layout = self.add_widget(self.colorPush, 'Current Color')
+        color_push_layout = self.add_widget(self.colorPush, "Current Color")
         color_layout.addLayout(color_push_layout)
         color_layout.setAlignment(Qt.AlignTop)
 
@@ -89,18 +95,18 @@ class IColoriTUI(QWidget):
         self.drawWidget = GUIDraw(
             color_model, load_size=load_size, win_size=win_size, device=device
         )
-        draw_pad_layout = self.add_widget(self.drawWidget, 'Drawing Pad')
+        draw_pad_layout = self.add_widget(self.drawWidget, "Drawing Pad")
         main_layout.addLayout(draw_pad_layout)
 
         draw_pad_menu = QHBoxLayout()
 
         self.bGray = QCheckBox("&Gray")
-        self.bGray.setToolTip('show gray-scale image')
+        self.bGray.setToolTip("show gray-scale image")
 
-        self.bLoad = QPushButton('&Load')
-        self.bLoad.setToolTip('load an input image')
+        self.bLoad = QPushButton("&Load")
+        self.bLoad.setToolTip("load an input image")
         self.bSave = QPushButton("&Save")
-        self.bSave.setToolTip('Save the current result.')
+        self.bSave.setToolTip("Save the current result.")
 
         draw_pad_menu.addWidget(self.bGray)
         draw_pad_menu.addWidget(self.bLoad)
@@ -108,14 +114,14 @@ class IColoriTUI(QWidget):
 
         draw_pad_layout.addLayout(draw_pad_menu)
         self.visWidget = GUI_VIS(win_size=win_size, scale=win_size / float(load_size))
-        vis_widget_layout = self.add_widget(self.visWidget, 'Colorized Result')
+        vis_widget_layout = self.add_widget(self.visWidget, "Colorized Result")
         main_layout.addLayout(vis_widget_layout)
 
         self.bRestart = QPushButton("&Restart")
-        self.bRestart.setToolTip('Restart the system')
+        self.bRestart.setToolTip("Restart the system")
 
         self.bQuit = QPushButton("&Quit")
-        self.bQuit.setToolTip('Quit the system.')
+        self.bQuit.setToolTip("Quit the system.")
         vis_widget_menu = QHBoxLayout()
         vis_widget_menu.addWidget(self.bRestart)
 
@@ -155,7 +161,7 @@ class IColoriTUI(QWidget):
 
         if img_file is not None:
             self.drawWidget.init_result(img_file)
-        print('UI initialized')
+        print("UI initialized")
 
     @staticmethod
     def add_widget(widget, title):
@@ -174,7 +180,9 @@ class IColoriTUI(QWidget):
 
     def reset(self):
         # self.start_t = time.time()
-        print('============================reset all=========================================')
+        print(
+            "============================reset all========================================="
+        )
         self.visWidget.reset()
         self.gamutWidget.reset()
         self.usedPalette.reset()
@@ -195,7 +203,7 @@ class IColoriTUI(QWidget):
         self.drawWidget.load_image()
 
     def change_color(self):
-        print('change color')
+        print("change color")
         self.drawWidget.change_color(use_suggest=True)
 
     # def keyPressEvent(self, event):

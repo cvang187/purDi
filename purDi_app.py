@@ -57,7 +57,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui = Ui_BasePurDi()
         self.ui.setupUi(self)
         self.threadpool = QThreadPool(self)
-        self.sd_inference = StableDiffusion(self)
+        # self.sd_inference = StableDiffusion(self)
         self.pa = PurDiActions()
         self.settings = QSettings("PurDi", "PurDi")
         self.setWindowIcon(QIcon("gui/icons/app_icon.png"))
@@ -249,8 +249,9 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.img2img_option_group.addButton(self.ui.img2img_checkbox)
         self.img2img_option_group.addButton(self.ui.cycle_diffusion_checkbox)
         self.img2img_option_group.addButton(self.ui.img2img_image_variation_checkbox)
-        self.img2img_option_group.addButton(self.ui.depth_to_image_checkbox)
         self.img2img_option_group.addButton(self.ui.instruct_pix2pix_checkbox)
+        self.img2img_option_group.addButton(self.ui.inpaint_checkbox)
+        self.img2img_option_group.addButton(self.ui.depth_to_image_checkbox)
         self.img2img_option_group.addButton(self.ui.pix2pix_zero_checkbox)
         self.img2img_option_group.addButton(self.ui.controlnet_checkbox)
 
@@ -262,6 +263,9 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
         self.ui.generate_button.clicked.connect(self.inference)
         self.ui.image_browser.cache_updated.connect(
+            self.ui.image_browser.append_items_to_view
+        )
+        self.image_viewer.image_processed.connect(
             self.ui.image_browser.append_items_to_view
         )
 
@@ -594,7 +598,7 @@ class StableDiffusionRunnable(QRunnable):
                 elif controlnet_current_selection == scribble:
                     self.inference_type = self.sd_inference.controlnet_scribble()
                 elif controlnet_current_selection == seg:
-                    self.inference_type = self.sd_inference.controlnet_seg
+                    self.inference_type = self.sd_inference.controlnet_seg()
             elif self.parent.ui.img2img_image_variation_checkbox.isChecked():
                 self.inference_type = self.sd_inference.img2img_variation()
             elif self.parent.ui.cycle_diffusion_checkbox.isChecked():
@@ -603,6 +607,8 @@ class StableDiffusionRunnable(QRunnable):
                 self.inference_type = self.sd_inference.instruct_pix2pix()
             elif self.parent.ui.pix2pix_zero_checkbox.isChecked():
                 self.inference_type = self.sd_inference.pix2pix_zero_image()
+            elif self.parent.ui.inpaint_checkbox.isChecked():
+                self.inference_type = self.sd_inference.inpaint()
             else:
                 self.inference_type = self.sd_inference.img2img()
         else:

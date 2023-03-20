@@ -625,7 +625,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_5, "Text-to-Image")
         self.page_2 = QWidget()
         self.page_2.setObjectName("page_2")
-        self.page_2.setGeometry(QRect(0, 0, 344, 488))
+        self.page_2.setGeometry(QRect(0, 0, 237, 137))
         self.verticalLayout_32 = QVBoxLayout(self.page_2)
         self.verticalLayout_32.setObjectName("verticalLayout_32")
         self.label_10 = QLabel(self.page_2)
@@ -661,7 +661,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_2, "Attend And Excite")
         self.page_3 = QWidget()
         self.page_3.setObjectName("page_3")
-        self.page_3.setGeometry(QRect(0, 0, 344, 488))
+        self.page_3.setGeometry(QRect(0, 0, 97, 313))
         self.verticalLayout_33 = QVBoxLayout(self.page_3)
         self.verticalLayout_33.setObjectName("verticalLayout_33")
         self.label_11 = QLabel(self.page_3)
@@ -684,7 +684,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_3, "MultiDiffusion")
         self.page_4 = QWidget()
         self.page_4.setObjectName("page_4")
-        self.page_4.setGeometry(QRect(0, 0, 344, 488))
+        self.page_4.setGeometry(QRect(0, 0, 257, 105))
         self.verticalLayout_34 = QVBoxLayout(self.page_4)
         self.verticalLayout_34.setObjectName("verticalLayout_34")
         self.label_12 = QLabel(self.page_4)
@@ -928,10 +928,22 @@ class Ui_BasePurDi(object):
 
         self.verticalLayout_12.addLayout(self.horizontalLayout_9)
 
+        self.horizontalLayout_12 = QHBoxLayout()
+        self.horizontalLayout_12.setObjectName("horizontalLayout_12")
+        self.horizontalLayout_12.setContentsMargins(-1, 0, -1, -1)
         self.controlnet_checkbox = QCheckBox(self.ControlNet)
         self.controlnet_checkbox.setObjectName("controlnet_checkbox")
 
-        self.verticalLayout_12.addWidget(self.controlnet_checkbox)
+        self.horizontalLayout_12.addWidget(self.controlnet_checkbox)
+
+        self.save_controlnet_input_maps_checkbox = QCheckBox(self.ControlNet)
+        self.save_controlnet_input_maps_checkbox.setObjectName(
+            "save_controlnet_input_maps_checkbox"
+        )
+
+        self.horizontalLayout_12.addWidget(self.save_controlnet_input_maps_checkbox)
+
+        self.verticalLayout_12.addLayout(self.horizontalLayout_12)
 
         self.image_variation_toolbox.addItem(self.ControlNet, "ControlNet")
         self.cycle_diffusion_widget = QWidget()
@@ -997,7 +1009,7 @@ class Ui_BasePurDi(object):
         )
         self.image_variation_widget = QWidget()
         self.image_variation_widget.setObjectName("image_variation_widget")
-        self.image_variation_widget.setGeometry(QRect(0, 0, 93, 276))
+        self.image_variation_widget.setGeometry(QRect(0, 0, 360, 399))
         self.verticalLayout_29 = QVBoxLayout(self.image_variation_widget)
         self.verticalLayout_29.setObjectName("verticalLayout_29")
         self.img2img_image_variation_label = QLabel(self.image_variation_widget)
@@ -1032,9 +1044,23 @@ class Ui_BasePurDi(object):
         self.image_variation_toolbox.addItem(
             self.image_variation_widget, "Image Variation"
         )
+        self.page_7 = QWidget()
+        self.page_7.setObjectName("page_7")
+        self.verticalLayout_38 = QVBoxLayout(self.page_7)
+        self.verticalLayout_38.setObjectName("verticalLayout_38")
+        self.horizontalLayout_13 = QHBoxLayout()
+        self.horizontalLayout_13.setObjectName("horizontalLayout_13")
+        self.inpaint_checkbox = QCheckBox(self.page_7)
+        self.inpaint_checkbox.setObjectName("inpaint_checkbox")
+
+        self.horizontalLayout_13.addWidget(self.inpaint_checkbox)
+
+        self.verticalLayout_38.addLayout(self.horizontalLayout_13)
+
+        self.image_variation_toolbox.addItem(self.page_7, "In-painting")
         self.instruct_pix2pix_widget = QWidget()
         self.instruct_pix2pix_widget.setObjectName("instruct_pix2pix_widget")
-        self.instruct_pix2pix_widget.setGeometry(QRect(0, 0, 136, 272))
+        self.instruct_pix2pix_widget.setGeometry(QRect(0, 0, 360, 399))
         self.verticalLayout_18 = QVBoxLayout(self.instruct_pix2pix_widget)
         self.verticalLayout_18.setObjectName("verticalLayout_18")
         self.label_13 = QLabel(self.instruct_pix2pix_widget)
@@ -1235,7 +1261,7 @@ class Ui_BasePurDi(object):
         self.optimization_toolbox.addItem(self.cpu_offload_item, "CPU Offload")
         self.cudnn_item = QWidget()
         self.cudnn_item.setObjectName("cudnn_item")
-        self.cudnn_item.setGeometry(QRect(0, 0, 98, 302))
+        self.cudnn_item.setGeometry(QRect(0, 0, 86, 350))
         self.verticalLayout_21 = QVBoxLayout(self.cudnn_item)
         self.verticalLayout_21.setObjectName("verticalLayout_21")
         self.label_3 = QLabel(self.cudnn_item)
@@ -1999,9 +2025,9 @@ class Ui_BasePurDi(object):
         self.retranslateUi(BasePurDi)
 
         self.right_dock_tab_widget.setCurrentIndex(0)
-        self.right_dock_inference_tab.setCurrentIndex(0)
+        self.right_dock_inference_tab.setCurrentIndex(1)
         self.toolBox.setCurrentIndex(0)
-        self.image_variation_toolbox.setCurrentIndex(1)
+        self.image_variation_toolbox.setCurrentIndex(5)
         self.optimization_toolbox.setCurrentIndex(3)
         self.sb_tab_sub_r_train.setCurrentIndex(0)
         self.prompt_field.setCurrentIndex(0)
@@ -2286,6 +2312,9 @@ class Ui_BasePurDi(object):
         self.controlnet_checkbox.setText(
             QCoreApplication.translate("BasePurDi", "Enable", None)
         )
+        self.save_controlnet_input_maps_checkbox.setText(
+            QCoreApplication.translate("BasePurDi", "Save Map", None)
+        )
         self.image_variation_toolbox.setItemText(
             self.image_variation_toolbox.indexOf(self.ControlNet),
             QCoreApplication.translate("BasePurDi", "ControlNet", None),
@@ -2331,6 +2360,13 @@ class Ui_BasePurDi(object):
         self.image_variation_toolbox.setItemText(
             self.image_variation_toolbox.indexOf(self.image_variation_widget),
             QCoreApplication.translate("BasePurDi", "Image Variation", None),
+        )
+        self.inpaint_checkbox.setText(
+            QCoreApplication.translate("BasePurDi", "Enable", None)
+        )
+        self.image_variation_toolbox.setItemText(
+            self.image_variation_toolbox.indexOf(self.page_7),
+            QCoreApplication.translate("BasePurDi", "In-painting", None),
         )
         self.label_13.setText(
             QCoreApplication.translate(

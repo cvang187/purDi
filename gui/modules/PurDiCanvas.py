@@ -1,6 +1,7 @@
 import os
-from pprint import pprint
 
+import PIL.ImageQt
+import cv2
 import numpy as np
 import qimage2ndarray
 import torch
@@ -25,7 +26,8 @@ from PySide6.QtGui import (
     QMouseEvent,
     QStandardItemModel,
     QPainter,
-    QPen, QIcon, )
+    QPen,
+)
 from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
@@ -36,9 +38,11 @@ from PySide6.QtWidgets import (
     QApplication,
     QGraphicsRectItem,
 )
+from cv2 import GaussianBlur, BORDER_DEFAULT
 
 from gui.modules.PurDiToolBoxWidget import PurDiToolBoxWidget
 from gui.purDi_Actions import PurDiActions
+from scripts.rembg.bg import post_process
 
 
 class UndoRedoItemMoved(QUndoCommand):
@@ -255,10 +259,13 @@ class PurDiCanvasView(QGraphicsView):
     mouse_left_button_double_clicked = Signal(float, float)
 
     rectChanged = Signal(QRect)
+    image_processed = Signal()
 
     def __init__(self, parent=None):
         super(PurDiCanvasView, self).__init__(parent)
         self.parent = parent
+        self.bg_remove_mask_only = False
+        self.bg_remove_model = "u2net_cloth_seg"
 
         self._max_canvas_size = 25000
         self._center_canvas_pos = self._max_canvas_size / 2
@@ -280,7 +287,6 @@ class PurDiCanvasView(QGraphicsView):
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-        # self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setCacheMode(QGraphicsView.CacheModeFlag.CacheBackground)
         self.setRenderHint(
             QPainter.RenderHint.Antialiasing
@@ -301,8 +307,6 @@ class PurDiCanvasView(QGraphicsView):
             # | Qt.KeyboardModifier.AltModifier
             # | Qt.KeyboardModifier.MetaModifier
         )
-        self._is_left_mouse_button_pressed = False
-        self._is_select_tool = False
         self._is_panning = False
 
         # zoom in/out properties
@@ -343,6 +347,7 @@ class PurDiCanvasView(QGraphicsView):
         return dummy_event
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        # TODO: make qpainter work for manual inpainting....
         # if self.inpainting:
         #     with QPainter(self) as painter:
         #         self.image_for_inpaint = self.scene.selectedItems()[0].boundingRect().toRect()
@@ -358,9 +363,6 @@ class PurDiCanvasView(QGraphicsView):
         QGraphicsView.paintEvent(self, event)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        key_modifiers = QApplication.keyboardModifiers()
-        shift = Qt.KeyboardModifier.ShiftModifier
-
         if (
             self.mouse_middle_btn is not None
             and event.button() == self.mouse_middle_btn
@@ -374,6 +376,10 @@ class PurDiCanvasView(QGraphicsView):
                 self.mousePressEvent(dummy_event)
             event.accept()
             self._is_panning = True
+
+        # TODO: finish implementing out-painting
+        key_modifiers = QApplication.keyboardModifiers()
+        shift = Qt.KeyboardModifier.ShiftModifier
 
         # elif key_modifiers & Qt.KeyboardModifier.ShiftModifier == shift:
         #     if event.button() == self.mouse_left_btn:
@@ -392,6 +398,7 @@ class PurDiCanvasView(QGraphicsView):
         QGraphicsView.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        # TODO: make qpainter work for manual inpainting....
         # if self.inpainting:
         #     current_pos = event.position().toPoint()
         #     self.painter.begin(self.scene.selectedItems()[0])
@@ -422,9 +429,6 @@ class PurDiCanvasView(QGraphicsView):
             event.accept()
             self._is_panning = False
 
-        # self.previous_pos = None
-        # self.inpainting = False
-
         QGraphicsView.mouseReleaseEvent(self, event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
@@ -433,17 +437,16 @@ class PurDiCanvasView(QGraphicsView):
             and len(self.scene.selectedItems()) == 1
         ):
             self.fitInView(self.itemAt(event.pos()), Qt.AspectRatioMode.KeepAspectRatio)
-            self.scene.selectedItems()[0].setFlag(
-                # QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
-                enabled=False,
-            )
-            self.parent.inpainting = True
-            return
+            # TODO: disable image movement for inpainting
+            # self.scene.selectedItems()[0].setFlag(
+            #     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            #     QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+            #     enabled=False,
+            # )
+            # self.parent.inpainting = True
 
         super().mouseDoubleClickEvent(event)
 
-    # TODO: implement real context menu
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """
         Shows default PurDiGraphicsView context menu if no images are selected.
@@ -461,7 +464,6 @@ class PurDiCanvasView(QGraphicsView):
             if len(self.scene.selectedItems()) == 0:
                 menu.addAction(tool_actions.pa.cursor_tool_action)
                 menu.addAction(tool_actions.pa.image_colorizer_action)
-                menu.addAction(tool_actions.pa.blur_background_action)
 
                 menu.exec(event.globalPos())
                 event.accept()
@@ -469,15 +471,25 @@ class PurDiCanvasView(QGraphicsView):
                 menu.addAction(tool_actions.pa.horizontal_flip_img_action)
                 menu.addAction(tool_actions.pa.vertical_flip_img_action)
 
-                colorizer_icon = os.path.abspath('gui/icons/colorizer.svg')
+                colorizer_icon = os.path.abspath("gui/icons/colorizer.svg")
                 colorizer = pa.create_toolbox_actions(
                     self,
                     icon_path=colorizer_icon,
-                    icon_txt='Colorizer',
-                    icon_tool_tip="Re-color image"
+                    icon_txt="Colorizer",
+                    icon_tool_tip="Re-color image",
                 )
                 menu.addAction(colorizer)
                 colorizer.triggered.connect(self.colorizer)
+
+                colorizer_icon = os.path.abspath("gui/icons/background_removal.svg")
+                remove_background_action = pa.create_toolbox_actions(
+                    self,
+                    icon_path=colorizer_icon,
+                    icon_txt="Remove Background",
+                    icon_tool_tip="A background removal network",
+                )
+                menu.addAction(remove_background_action)
+                remove_background_action.triggered.connect(self.background_removal)
 
                 menu.exec(event.globalPos())
                 event.accept()
@@ -485,24 +497,92 @@ class PurDiCanvasView(QGraphicsView):
             super().contextMenuEvent(event)
             event.ignore()
 
-    # TODO: move into purDi_app
+    @Slot()
+    def background_removal(self):
+        """
+        Powered by U2Net for image segmentation tasks like background removal
+        or clothing extraction/masking for other diffuser pipelines like inpainting
+        """
+        from scripts.rembg.session_factory import new_session
+        from scripts.FileUtils import u2net_clothes_split_mask
+        from scripts.rembg.bg import remove
+        from PIL import ImageChops, ImageQt
+
+        pixmap = self.scene.selectedItems()[0].pixmap()
+        full_path = self.scene.selectedItems()[0].data(Qt.ItemDataRole.DisplayRole)
+        path, img_name = os.path.split(full_path)
+        img_name = img_name[:-4]
+
+        image = ImageQt.fromqpixmap(pixmap)
+        session = new_session(base_model_name=self.bg_remove_model)
+
+        if not self.bg_remove_mask_only:
+            result = remove(
+                data=image,
+                alpha_matting=False,
+                alpha_matting_foreground_threshold=240,
+                alpha_matting_background_threshold=10,
+                alpha_matting_erode_size=10,
+                session=session,
+                only_mask=False,
+                post_process_mask=False,
+            )
+
+            result.save(os.path.join(path, f"{img_name[:50]}_extracted.png"), "png")
+            self.scene.show_image(result)
+            self.image_processed.emit()
+            return
+
+        result = remove(
+            data=image,
+            alpha_matting=False,
+            alpha_matting_foreground_threshold=240,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=10,
+            session=session,
+            only_mask=True,
+            post_process_mask=True,
+        )
+
+        masks = u2net_clothes_split_mask(image=result, w_split=1, h_split=3)
+
+        for i, m in enumerate(masks):
+            test_mask = PIL.Image.fromarray(m)
+            if not sum(test_mask.convert("L").getextrema()) in (
+                0,
+                2,
+            ):  # if not all white/black mask
+                mask = PIL.Image.fromarray(m).convert("RGB")
+                inverted_mask = PIL.ImageChops.invert(mask)
+
+                self.scene.show_image(inverted_mask)
+                file_name = os.path.join(path, f"{img_name[:50]}_mask_{i}.png")
+                inverted_mask.save(file_name)
+
+        self.image_processed.emit()
+
+    @Slot()
     def colorizer(self):
         """
-        A nice CNN to change an image's color. Eventually move it out of a
+        A CNN to change an image's color. Eventually move it out of a
         pop-up dock widget and into the main UI. For now, quick and dirty
         implementation.
         """
+        # TODO: move into purDi_app
         import os
         from timm.models import create_model
-        import scripts.iColoriT.modeling
         from scripts.iColoriT import gui_main
 
+        # TODO: If colorizer breaks, needs modeling module
+        import scripts.iColoriT.modeling
+
         import warnings
+
         warnings.filterwarnings("ignore", category=UserWarning)
 
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model_name = 'icolorit_base_4ch_patch16_224'
-        model_dir = os.path.join(os.path.abspath('models'), f"{model_name}.pth")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_name = "icolorit_base_4ch_patch16_224"
+        model_dir = os.path.join(os.path.abspath("models"), f"{model_name}.pth")
 
         img = self.scene.selectedItems()[0]
         if isinstance(img, QGraphicsItem):
@@ -519,11 +599,8 @@ class PurDiCanvasView(QGraphicsView):
                     mask_cent=False,
                 )
                 model.to(device)
-                checkpoint = torch.load(
-                    model_dir,
-                    map_location=torch.device(device)
-                )
-                model.load_state_dict(checkpoint['model'], strict=False)
+                checkpoint = torch.load(model_dir, map_location=torch.device(device))
+                model.load_state_dict(checkpoint["model"], strict=False)
                 model.eval()
             except ValueError:
                 pass
@@ -535,7 +612,7 @@ class PurDiCanvasView(QGraphicsView):
                     load_size=224,
                     win_size=600,
                     device=device,
-                    parent=self
+                    parent=self,
                 )
                 popup.show()
 
@@ -600,11 +677,7 @@ class PurDiCanvasView(QGraphicsView):
                     pixmap_list.append(image)
         finally:
             for index, url in enumerate(pixmap_list):
-                self.scene.show_image(
-                    image=QPixmap(url),
-                    url=url,
-                    pos=scene_pos
-                )
+                self.scene.show_image(image=QPixmap(url), url=url, pos=scene_pos)
                 event.accept()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:

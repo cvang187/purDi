@@ -496,7 +496,7 @@ class IColoriT(nn.Module):
         avg_hint=False,
         head_mode="default",
         mask_cent=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.num_classes = num_classes

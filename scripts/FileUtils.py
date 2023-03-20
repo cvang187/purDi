@@ -1,6 +1,9 @@
 import os
 import glob
 
+import numpy as np
+from PIL import Image
+
 
 def split_file(path, chunk_size=50000000):
     file_number = 1
@@ -9,10 +12,10 @@ def split_file(path, chunk_size=50000000):
         chunk = f.read(chunk_size)
         while chunk:
             with open(
-                    os.path.join(
-                        os.path.dirname(path), filename + ".part" + str(file_number)
-                    ),
-                    "wb",
+                os.path.join(
+                    os.path.dirname(path), filename + ".part" + str(file_number)
+                ),
+                "wb",
             ) as chunk_file:
                 chunk_file.write(chunk)
             file_number += 1
@@ -44,3 +47,26 @@ def merge_files(prefix, dirname):
 
     with open(os.path.join(dirname, prefix), "wb") as fp:
         fp.write(mergedBytes)
+
+
+def u2net_clothes_split_mask(
+    image: Image,
+    w_split: int = 1,
+    h_split: int = 3,
+):
+    w = image.width // w_split
+    h = image.height // h_split
+
+    nd_image = np.array(image)
+
+    image_slices = [
+        nd_image[x : x + h, y : y + w]
+        for x in range(0, nd_image.shape[0], h)
+        for y in range(0, nd_image.shape[1], w)
+    ]
+
+    mask_list = []
+    for mask in image_slices:
+        mask_list.append(mask)
+
+    return mask_list

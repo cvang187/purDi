@@ -169,11 +169,7 @@ class GUIDraw(QWidget):
 
         if self.ui_mode == "stroke":
             self.uiControl.add_stroke(
-                self.prev_pos,
-                self.pos,
-                snap_qcolor,
-                self.user_color,
-                self.brushWidth
+                self.prev_pos, self.pos, snap_qcolor, self.user_color, self.brushWidth
             )
         if self.ui_mode == "erase":
             is_removed = self.uiControl.erase_point(self.pos)

@@ -1,4 +1,5 @@
 import os.path
+
 # import re
 
 import cv2
@@ -24,7 +25,7 @@ class StableDiffusion(QObject):
         self.model_dir = os.path.join(
             os.path.abspath(os.path.dirname("purDi")), "models"
         )
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.output_type = (
             "pil" if not self.parent.ui.latent_upscale_2x.isChecked() else "latent"
         )
@@ -116,13 +117,14 @@ class StableDiffusion(QObject):
             input_img = processed_img(initial_img)
 
             # saves image to be processed
-            # name = f"CN_{positive[:60]}"
-            # self.save_images(
-            #     image_list=[input_img],
-            #     seed_list=[0],
-            #     filename=name,
-            #     suffix=img_map_suffix,
-            # )
+            if self.parent.ui.save_controlnet_input_maps_checkbox.isChecked():
+                name = f"CN_{positive[:60]}"
+                self.save_images(
+                    image_list=[input_img],
+                    seed_list=[0],
+                    filename=name,
+                    suffix=img_map_suffix,
+                )
 
             for n in range(n_image):
                 seed = self.random_or_manual_seed("cpu")
@@ -404,7 +406,9 @@ class StableDiffusion(QObject):
             cache_dir=self.model_dir,
         )
         pipe.scheduler = diffusers.DDIMScheduler.from_config(pipe.scheduler.config)
-        pipe.inverse_scheduler = diffusers.DDIMInverseScheduler.from_config(pipe.scheduler.config)
+        pipe.inverse_scheduler = diffusers.DDIMInverseScheduler.from_config(
+            pipe.scheduler.config
+        )
 
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
@@ -784,6 +788,94 @@ class StableDiffusion(QObject):
         self.img_finished.emit()
 
     @Slot()
+    def inpaint(self):
+        """
+        Stable Diffusion image-to-image pipe_line. Images are saved in /output.
+        """
+        self.img_started.emit()
+        (
+            positive,
+            negative,
+            width,
+            height,
+            n_image,
+            batch,
+            scheduler,
+            cfg,
+            steps,
+            i2i_list,
+            strength,
+        ) = self.user_params_for_pipeline(inference_type="img2img")
+
+        try:
+            mask_img = self.parent.ui.img2img_select_box.item(0).text()
+            print(mask_img)
+            mask_img = Image.open(mask_img).convert("RGB")
+            print(mask_img.size)
+        except ValueError:
+            raise ValueError("Inpainting needs a mask image")
+
+        model_id = "stabilityai/stable-diffusion-2-inpainting"
+        # model_id = "runwayml/stable-diffusion-inpainting"
+        pipe = diffusers.StableDiffusionInpaintPipeline.from_pretrained(
+            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+        )
+        # pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
+
+        self.cpu_offload_check(pipe)
+        self.attention_slicing_check(pipe)
+        self.xformer_check(pipe)
+        self.nsfw_check(pipe)
+
+        pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
+            pipe_line=pipe, positive=positive, negative=negative
+        )
+
+        def live_img_preview(i, t, latents):
+            img = pipe.decode_latents(latents)
+            img = img.squeeze()
+            self.parent.ui.generate_img_progress.setValue(t)
+            self.parent.image_viewer.scene.show_image(img, is_latent=True)
+
+        for img in i2i_list:
+            # TODO: fix issue
+            # initial_img = self.img2pillow(file=img)
+            dir = os.path.abspath("output")
+            initial_img = Image.open(os.path.join(dir, "init.png"))
+
+            for n in range(n_image):
+                seed = self.random_or_manual_seed(self.device)
+
+                with torch.inference_mode():
+                    image = pipe(
+                        prompt=pos_prompt,
+                        negative_prompt=neg_prompt,
+                        prompt_embeds=pos_emb,
+                        negative_prompt_embeds=neg_emb,
+                        image=initial_img,
+                        mask_image=mask_img,
+                        width=mask_img.width,
+                        height=mask_img.height,
+                        num_images_per_prompt=batch,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        generator=seed[0],
+                        output_type=self.output_type,
+                        callback=live_img_preview,
+                        callback_steps=self.callback_step,
+                    ).images
+
+                if self.parent.ui.latent_upscale_2x.isChecked():
+                    image = self.latent_upscaler_2x(
+                        prompt=positive, latent=image, steps=steps, seed=seed[0]
+                    )
+
+                name = f"I2I_{positive[:60]}"
+                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+
+        self.img_finished.emit()
+
+    @Slot()
     def img2img(self):
         """
         Stable Diffusion image-to-image pipe_line. Images are saved in /output.
@@ -889,6 +981,7 @@ class StableDiffusion(QObject):
 
         # finds any words wrapped with single quote
         import re
+
         token_words = re.findall('"(.+?)"', positive)
         prompt = positive.replace('"', "")
         token_list = []
@@ -963,7 +1056,9 @@ class StableDiffusion(QObject):
         pipe = diffusers.StableDiffusionPanoramaPipeline.from_pretrained(
             model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
         )
-        pipe.scheduler = diffusers.DDIMScheduler.from_pretrained(model_id, subfolder="scheduler")
+        pipe.scheduler = diffusers.DDIMScheduler.from_pretrained(
+            model_id, subfolder="scheduler"
+        )
 
         self.sequential_cpu_offload_check(pipe)
         self.sliced_vae_check(pipe)
