@@ -1,7 +1,6 @@
 import os
 
 import PIL.ImageQt
-import cv2
 import numpy as np
 import qimage2ndarray
 import torch
@@ -27,6 +26,7 @@ from PySide6.QtGui import (
     QStandardItemModel,
     QPainter,
     QPen,
+    QActionGroup,
 )
 from PySide6.QtWidgets import (
     QGraphicsView,
@@ -38,11 +38,9 @@ from PySide6.QtWidgets import (
     QApplication,
     QGraphicsRectItem,
 )
-from cv2 import GaussianBlur, BORDER_DEFAULT
 
 from gui.modules.PurDiToolBoxWidget import PurDiToolBoxWidget
 from gui.purDi_Actions import PurDiActions
-from scripts.rembg.bg import post_process
 
 
 class UndoRedoItemMoved(QUndoCommand):
@@ -236,6 +234,11 @@ class PurDiCanvasScene(QGraphicsScene):
                 )
 
             if is_latent:
+                # item.setFlag(
+                #     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+                #     | QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                #     enabled=False,
+                # )
                 self.image_latent_currently_decoding.append(item)
 
             self.addItem(item)
@@ -264,8 +267,6 @@ class PurDiCanvasView(QGraphicsView):
     def __init__(self, parent=None):
         super(PurDiCanvasView, self).__init__(parent)
         self.parent = parent
-        self.bg_remove_mask_only = True
-        self.bg_remove_model = "u2net_cloth_seg"
 
         self._max_canvas_size = 25000
         self._center_canvas_pos = self._max_canvas_size / 2
@@ -320,6 +321,54 @@ class PurDiCanvasView(QGraphicsView):
 
         self.scene.zoom.connect(self.reset_zoom)
         self.setUpdatesEnabled(True)
+
+        # context menu
+        self.pa = PurDiActions()
+        self.bg_remove_mask_only = True
+        self.bg_remove_model = "u2net"
+        self.colorizer_icon = os.path.abspath("gui/icons/colorizer.svg")
+        self.remove_bg_icon = os.path.abspath("gui/icons/background_removal.svg")
+        self.colorizer_action = self.pa.create_toolbox_actions(
+            self,
+            icon_path=self.colorizer_icon,
+            icon_txt="Colorizer",
+            icon_tool_tip="Re-color image",
+        )
+        self.remove_bg_action = self.pa.create_toolbox_actions(
+            self,
+            icon_path=self.remove_bg_icon,
+            icon_txt="Remove Background",
+            icon_tool_tip="A background removal network",
+        )
+        self.mask_person_action = self.pa.create_toolbox_actions(
+            self,
+            icon_path=self.remove_bg_icon,
+            icon_txt="Mask Person",
+            icon_tool_tip="Mask person for inpainting",
+        )
+        self.mask_bg_action = self.pa.create_toolbox_actions(
+            self,
+            icon_path=self.remove_bg_icon,
+            icon_txt="Mask Background",
+            icon_tool_tip="Mask background for inpainting",
+        )
+        self.mask_clothing_action = self.pa.create_toolbox_actions(
+            self,
+            icon_path=self.remove_bg_icon,
+            icon_txt="Mask Clothing",
+            icon_tool_tip="Mask clothing for inpainting",
+        )
+        self.canvas_context_menu_action_group = QActionGroup(self)
+        self.remove_bg_action.setActionGroup(self.canvas_context_menu_action_group)
+        self.mask_bg_action.setActionGroup(self.canvas_context_menu_action_group)
+        self.mask_clothing_action.setActionGroup(self.canvas_context_menu_action_group)
+        self.mask_person_action.setActionGroup(self.canvas_context_menu_action_group)
+
+        self.colorizer_action.triggered.connect(self.run_colorizer)
+        self.remove_bg_action.triggered.connect(self.run_bg_removal)
+        self.mask_bg_action.triggered.connect(self.run_bg_removal)
+        self.mask_clothing_action.triggered.connect(self.run_bg_removal)
+        self.mask_person_action.triggered.connect(self.run_bg_removal)
 
         # self.inpainting = False
         # self.previous_pos = None
@@ -457,39 +506,27 @@ class PurDiCanvasView(QGraphicsView):
         try:
             menu = QMenu(self)
             tool_actions = PurDiToolBoxWidget(self)
-            pa = PurDiActions()
         except ModuleNotFoundError:
             print(f"Unable to create QMenu() or PurDiToolBoxWidget()")
         else:
             if len(self.scene.selectedItems()) == 0:
-                menu.addAction(tool_actions.pa.cursor_tool_action)
-                menu.addAction(tool_actions.pa.image_colorizer_action)
-
                 menu.exec(event.globalPos())
                 event.accept()
             else:
+                edit_menu = menu.addMenu("Edit")
+                extract_menu = menu.addMenu("Extract")
+
+                edit_menu.addAction(self.colorizer_action)
+
+                extract_menu.addAction(self.mask_bg_action)
+                extract_menu.addAction(self.mask_clothing_action)
+                extract_menu.addAction(self.mask_person_action)
+                extract_menu.addSeparator()
+                extract_menu.addAction(self.remove_bg_action)
+
+                menu.addSeparator()
                 menu.addAction(tool_actions.pa.horizontal_flip_img_action)
                 menu.addAction(tool_actions.pa.vertical_flip_img_action)
-
-                colorizer_icon = os.path.abspath("gui/icons/colorizer.svg")
-                colorizer = pa.create_toolbox_actions(
-                    self,
-                    icon_path=colorizer_icon,
-                    icon_txt="Colorizer",
-                    icon_tool_tip="Re-color image",
-                )
-                menu.addAction(colorizer)
-                colorizer.triggered.connect(self.colorizer)
-
-                colorizer_icon = os.path.abspath("gui/icons/background_removal.svg")
-                remove_background_action = pa.create_toolbox_actions(
-                    self,
-                    icon_path=colorizer_icon,
-                    icon_txt="Remove Background",
-                    icon_tool_tip="A background removal network",
-                )
-                menu.addAction(remove_background_action)
-                remove_background_action.triggered.connect(self.background_removal)
 
                 menu.exec(event.globalPos())
                 event.accept()
@@ -498,7 +535,7 @@ class PurDiCanvasView(QGraphicsView):
             event.ignore()
 
     @Slot()
-    def background_removal(self):
+    def run_bg_removal(self):
         """
         Powered by U2Net for image segmentation tasks like background removal
         or clothing extraction/masking for other diffuser pipelines like inpainting
@@ -511,12 +548,29 @@ class PurDiCanvasView(QGraphicsView):
         pixmap = self.scene.selectedItems()[0].pixmap()
         full_path = self.scene.selectedItems()[0].data(Qt.ItemDataRole.DisplayRole)
         path, img_name = os.path.split(full_path)
-        img_name = img_name[:-4]
+        # img_name = img_name[:-4]
+
+        if self.remove_bg_action.isChecked():
+            self.bg_remove_model = "u2net"
+            self.bg_remove_mask_only = False
+        elif self.mask_bg_action.isChecked():
+            self.bg_remove_model = "u2net"
+            self.bg_remove_mask_only = True
+        elif self.mask_person_action.isChecked():
+            self.bg_remove_model = "u2net_human_seg"
+            self.bg_remove_mask_only = True
+        elif self.mask_clothing_action.isChecked():
+            self.bg_remove_model = "u2net_cloth_seg"
+            self.bg_remove_mask_only = True
+
+        # TODO: remove - for debug only
+        print(self.bg_remove_model)
+        print(self.bg_remove_mask_only)
 
         image = ImageQt.fromqpixmap(pixmap)
         session = new_session(model_name=self.bg_remove_model)
 
-        result = remove(
+        results = remove(
             data=image,
             alpha_matting=False,
             alpha_matting_foreground_threshold=240,
@@ -527,27 +581,30 @@ class PurDiCanvasView(QGraphicsView):
             post_process_mask=True,
         )
 
-        masks = u2net_clothes_split_mask(image=result, w_split=1, h_split=3)
+        if self.mask_clothing_action.isChecked():
+            results = u2net_clothes_split_mask(image=results, w_split=1, h_split=3)
+        else:
+            results = [results]
 
-        for i, m in enumerate(masks):
-            test_mask = PIL.Image.fromarray(m)
-            if not sum(test_mask.convert("L").getextrema()) in (
-                0,
-                2,
-            ):  # if not all white/black mask
-                mask = PIL.Image.fromarray(m)
-                if self.bg_remove_mask_only:
-                    mask = mask.convert("RGB")
-                    mask = PIL.ImageChops.invert(mask)
+        for index, mask in enumerate(results):
+            if (
+                self.bg_remove_mask_only
+                and not self.mask_bg_action.isChecked()
+                and not self.mask_clothing_action.isChecked()
+            ):
+                mask = mask.convert("RGB")
+                mask = PIL.ImageChops.invert(mask)
 
-                self.scene.show_image(mask)
-                file_name = os.path.join(path, f"{img_name[:50]}_mask_{i}.png")
-                mask.save(file_name)
+            # self.scene.show_image(mask)
+            file_name = os.path.join(
+                path, f"{img_name[:50]}_{self.bg_remove_model}_{index}.png"
+            )
+            mask.save(file_name)
 
         self.image_processed.emit()
 
     @Slot()
-    def colorizer(self):
+    def run_colorizer(self):
         """
         A CNN to change an image's color. Eventually move it out of a
         pop-up dock widget and into the main UI. For now, quick and dirty
@@ -562,7 +619,6 @@ class PurDiCanvasView(QGraphicsView):
         import scripts.iColoriT.modeling
 
         import warnings
-
         warnings.filterwarnings("ignore", category=UserWarning)
 
         device = "cuda" if torch.cuda.is_available() else "cpu"

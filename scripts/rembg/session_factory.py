@@ -37,8 +37,8 @@ def new_session(model_name: str = "u2net") -> BaseSession:
         )
         session_class = SimpleSession
 
-    model_dir = os.path.abspath('models')
-    u2net = 'u2net'
+    model_dir = os.path.abspath("models")
+    u2net = "u2net"
     u2net_home = os.path.join(model_dir, u2net)
     if not os.path.exists(u2net_home):
         os.mkdir(u2net_home)

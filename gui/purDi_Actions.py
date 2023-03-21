@@ -141,13 +141,13 @@ class PurDiActions(QAction):
         self.horizontal_flip_img_action = self.create_toolbox_actions(
             self,
             self.horizontal_flip_img_icon_path,
-            "",
+            "Flip Horizontal",
             "Horizontal Image Flip",
         )
         self.vertical_flip_img_action = self.create_toolbox_actions(
             self,
             self.vertical_flip_img_icon_path,
-            "",
+            "Flip Vertical",
             "Vertical Image Flip",
         )
         self.panorama_action = self.create_toolbox_actions(
@@ -247,8 +247,7 @@ class PurDiActions(QAction):
         create_action_pixmap = self.set_icon_color(icon_path)
         create_action = QAction(create_action_pixmap, icon_txt, parent)
         create_action.setToolTip(icon_tool_tip)
-        # create_action.setCheckable(True)
-        # create_action.setEnabled(False)
+        create_action.setCheckable(True)
         return create_action
 
     def create_toolbox_buttons(

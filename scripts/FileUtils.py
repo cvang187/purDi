@@ -67,6 +67,14 @@ def u2net_clothes_split_mask(
 
     mask_list = []
     for mask in image_slices:
-        mask_list.append(mask)
+        test_mask = Image.fromarray(mask)
+
+        # checks if any mask are empty (all black/white)
+        if not sum(test_mask.convert("L").getextrema()) in (
+            0,
+            2,
+        ):
+            mask = Image.fromarray(mask)
+            mask_list.append(mask)
 
     return mask_list

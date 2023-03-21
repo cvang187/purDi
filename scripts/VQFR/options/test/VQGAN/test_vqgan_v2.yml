@@ -1,0 +1,53 @@
+name: test_vqgan_v2
+model_type: VQGANModel
+scale: 1
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 0
+
+datasets:
+  val:
+    name: Val
+    type: PairedImageDataset
+    dataroot_gt: datasets/Validation/Recon_Validation
+    dataroot_lq: datasets/Validation/Recon_Validation
+    io_backend:
+      type: disk
+
+    mean: [0.5, 0.5, 0.5]
+    std: [0.5, 0.5, 0.5]
+
+# network structures
+network_g:
+  type: VQGANv2
+  base_channels: 64
+  channel_multipliers: [ 1,2,2,4,4,8 ]
+  num_enc_blocks: 2
+  use_enc_attention: true
+  num_dec_blocks: 2
+  use_dec_attention: true
+  code_dim: 256
+  quantizer_opt:
+    type: L2VectorQuantizer
+    num_code: 1024
+    code_dim: 256
+    spatial_size: [ 16,16 ]
+
+# path
+path:
+  pretrain_network_g: experiments/pretrained_models/VQ_Codebook_FFHQ512_v2.pth
+  strict_load_g: true
+
+# validation settings
+val:
+  save_img: true
+  suffix: ~  # add suffix to saved images, if None, use exp name
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 4
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 4
+      test_y_channel: false

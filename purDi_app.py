@@ -265,34 +265,37 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.image_browser.cache_updated.connect(
             self.ui.image_browser.append_items_to_view
         )
-        self.image_viewer.image_processed.connect(
-            self.ui.image_browser.append_items_to_view
-        )
+        self.image_viewer.image_processed.connect(self.ui.image_browser.generate_cache)
+
+        self.full_screen = False
 
         if os.path.exists("my_theme.xml"):
             self.apply_stylesheet(self, "my_theme.xml")
         else:
             self.apply_stylesheet(self, "dark_teal.xml")
 
-        self.full_screen = False
+        attend_excite_pixmap = QPixmap('gui/images/txt2img/attend-excite.png')
+        self.ui.attend_excite_pixmap.setPixmap(attend_excite_pixmap)
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.key() == Qt.Key.Key_F11:
-            if not self.full_screen:
-                self.showFullScreen()
-                self.full_screen = True
-                return
-            self.showNormal()
-            self.full_screen = False
+        multi_diffusion_pixmap = QPixmap('gui/images/txt2img/multi_diffusion.png')
+        self.ui.multi_diffusion_pixmap.setPixmap(multi_diffusion_pixmap)
+
+        vqfr_comparision_pixmap = QPixmap('gui/images/vqfr/comparison-small.jpg')
+        self.ui.vqfr_pixmap.setPixmap(vqfr_comparision_pixmap)
+        cycle_diffusion_pixmap = QPixmap('gui/images/img2img/cycle_diffusion.png')
+        self.ui.cycle_diffusion_pixmap.setPixmap(cycle_diffusion_pixmap)
+        image_variation_pixmap = QPixmap('gui/images/img2img/image-variations.jpg')
+        self.ui.image_variations_pixmap.setPixmap(image_variation_pixmap)
+        instruct_pix2pix_pixmap = QPixmap('gui/images/img2img/instruct_pix2pix.png')
+        self.ui.instruct_pix2pix_pixmap.setPixmap(instruct_pix2pix_pixmap)
+        zero_pix2pix_pixmap = QPixmap('gui/images/img2img/zero-pix2pix.png')
+        self.ui.zero_pix2pix_pixmap.setPixmap(zero_pix2pix_pixmap)
 
     @Slot()
     def inference(self):
         inference_thread = StableDiffusionRunnable(self)
-
         if self.ui.generate_button.isChecked():
-            self.threadpool.globalInstance().tryStart(inference_thread)
-        else:
-            self.threadpool.globalInstance().tryTake(inference_thread)
+            self.threadpool.globalInstance().start(inference_thread)
 
     @Slot()
     def disable_generate_img_button(self):
@@ -334,7 +337,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
                 index, file_path, Qt.ItemDataRole.UserRole
             )
 
-        # remove
+        # TODO: remove?
         excluded_models = ["controlnet", "lambdalabs sd image variations", "timbrooks"]
         for model in excluded_models:
             folder = self.select_model_drop_down_box.findText(
@@ -343,7 +346,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
             self.select_model_drop_down_box.removeItem(folder)
 
     # TODO: pipe_line.scheduler.compatibles.
-    #  In future, replace with diffuser's own builtin. Previously it did not exist?
+    #  In the future, replace with diffuser's own builtin. Previously it did not exist?
     def add_scheduler_to_drop_down_box(self) -> None:
         """
         Add available schedulers from Diffusers to a QComboBox with QIcon
@@ -441,6 +444,15 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
     def update_window_on_ui_changes(self) -> None:
         self.image_viewer.resize(self.centralWidget().size())
         # self.align_widget_to_canvas()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_F11:
+            if not self.full_screen:
+                self.showFullScreen()
+                self.full_screen = True
+                return
+            self.showNormal()
+            self.full_screen = False
 
     def resizeEvent(self, event) -> None:
         self.update_window_on_ui_changes()

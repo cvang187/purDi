@@ -1253,7 +1253,7 @@
               <enum>QTabWidget::South</enum>
              </property>
              <property name="currentIndex">
-              <number>1</number>
+              <number>0</number>
              </property>
              <property name="elideMode">
               <enum>Qt::ElideLeft</enum>
@@ -1722,7 +1722,7 @@
                   <item>
                    <widget class="QToolBox" name="toolBox">
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>2</number>
                     </property>
                     <widget class="QWidget" name="page_5">
                      <property name="geometry">
@@ -1773,14 +1773,21 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>237</width>
-                       <height>137</height>
+                       <width>344</width>
+                       <height>488</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>Attend And Excite</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_32">
+                      <item>
+                       <widget class="QLabel" name="attend_excite_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_10">
                         <property name="sizePolicy">
@@ -1841,14 +1848,43 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>97</width>
-                       <height>313</height>
+                       <width>344</width>
+                       <height>488</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>MultiDiffusion</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_33">
+                      <item>
+                       <widget class="QScrollArea" name="scrollArea">
+                        <property name="widgetResizable">
+                         <bool>true</bool>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                        </property>
+                        <widget class="QWidget" name="scrollAreaWidgetContents">
+                         <property name="geometry">
+                          <rect>
+                           <x>0</x>
+                           <y>0</y>
+                           <width>324</width>
+                           <height>375</height>
+                          </rect>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_41">
+                          <item>
+                           <widget class="QLabel" name="multi_diffusion_pixmap">
+                            <property name="text">
+                             <string/>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_11">
                         <property name="sizePolicy">
@@ -1885,14 +1921,21 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>257</width>
-                       <height>105</height>
+                       <width>344</width>
+                       <height>488</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>Self-Attention Guidance</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_34">
+                      <item>
+                       <widget class="QLabel" name="self_attention_guidance">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_12">
                         <property name="sizePolicy">
@@ -2127,7 +2170,7 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>5</number>
+                     <number>6</number>
                     </property>
                     <widget class="QWidget" name="page">
                      <property name="geometry">
@@ -2237,13 +2280,20 @@
                        <x>0</x>
                        <y>0</y>
                        <width>360</width>
-                       <height>429</height>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>ControlNet</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_12">
+                      <item>
+                       <widget class="QLabel" name="controlnet_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_19">
                         <property name="sizePolicy">
@@ -2402,14 +2452,27 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>95</width>
-                       <height>404</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>Cycle Diffusion</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_30">
+                      <item>
+                       <widget class="QLabel" name="cycle_diffusion_pixmap">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="cycle_diffusion_label">
                         <property name="sizePolicy">
@@ -2522,6 +2585,13 @@
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_29">
                       <item>
+                       <widget class="QLabel" name="image_variations_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
                        <widget class="QLabel" name="img2img_image_variation_label">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
@@ -2566,10 +2636,25 @@
                      </layout>
                     </widget>
                     <widget class="QWidget" name="page_7">
+                     <property name="geometry">
+                      <rect>
+                       <x>0</x>
+                       <y>0</y>
+                       <width>360</width>
+                       <height>399</height>
+                      </rect>
+                     </property>
                      <attribute name="label">
                       <string>In-painting</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_38">
+                      <item>
+                       <widget class="QLabel" name="inpaint_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <layout class="QHBoxLayout" name="horizontalLayout_13">
                         <item>
@@ -2596,6 +2681,13 @@
                       <string>InstructPix2Pix</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_18">
+                      <item>
+                       <widget class="QLabel" name="instruct_pix2pix_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_13">
                         <property name="sizePolicy">
@@ -2707,14 +2799,21 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>100</width>
-                       <height>324</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
                       <string>Pix2Pix Zero-shot</string>
                      </attribute>
                      <layout class="QVBoxLayout" name="verticalLayout_37">
+                      <item>
+                       <widget class="QLabel" name="zero_pix2pix_pixmap">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item>
                        <widget class="QLabel" name="label_16">
                         <property name="sizePolicy">
@@ -3018,7 +3117,7 @@
                        <x>0</x>
                        <y>0</y>
                        <width>360</width>
-                       <height>636</height>
+                       <height>223</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3196,59 +3295,144 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                 </widget>
                </item>
                <item>
-                <widget class="QGroupBox" name="inference_general_options">
+                <widget class="QGroupBox" name="image_upscaling_group">
                  <property name="styleSheet">
                   <string notr="true">border-color: rgba(255, 255, 255, 0);</string>
                  </property>
                  <property name="title">
-                  <string>General Options</string>
+                  <string>Face Restoration</string>
                  </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_22">
+                 <layout class="QVBoxLayout" name="verticalLayout_39">
                   <property name="leftMargin">
-                   <number>10</number>
+                   <number>0</number>
                   </property>
                   <property name="topMargin">
                    <number>0</number>
                   </property>
                   <property name="rightMargin">
-                   <number>10</number>
+                   <number>0</number>
                   </property>
                   <property name="bottomMargin">
                    <number>0</number>
                   </property>
                   <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_11">
-                    <property name="topMargin">
+                   <widget class="QToolBox" name="toolBox_2">
+                    <property name="currentIndex">
                      <number>0</number>
                     </property>
-                    <item>
-                     <widget class="QCheckBox" name="prompt_weight_checkbox">
-                      <property name="text">
-                       <string>Prompt Weighting</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="latent_upscale_2x">
-                      <property name="text">
-                       <string>2x Upscale</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="nsfw_checkbox">
-                      <property name="text">
-                       <string>NSFW</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
+                    <widget class="QWidget" name="page_8">
+                     <property name="geometry">
+                      <rect>
+                       <x>0</x>
+                       <y>0</y>
+                       <width>360</width>
+                       <height>322</height>
+                      </rect>
+                     </property>
+                     <attribute name="label">
+                      <string>Vector_Quantized Face Restoration</string>
+                     </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_40">
+                      <item>
+                       <widget class="QLabel" name="vqfr_pixmap">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="scaledContents">
+                         <bool>true</bool>
+                        </property>
+                        <property name="openExternalLinks">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="vqfr_checkbox">
+                        <property name="text">
+                         <string>Enable</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                    <widget class="QWidget" name="page_9">
+                     <property name="geometry">
+                      <rect>
+                       <x>0</x>
+                       <y>0</y>
+                       <width>360</width>
+                       <height>322</height>
+                      </rect>
+                     </property>
+                     <attribute name="label">
+                      <string>CodeFormer</string>
+                     </attribute>
+                    </widget>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="inference_general_options">
+                    <property name="styleSheet">
+                     <string notr="true">border-color: rgba(255, 255, 255, 0);</string>
+                    </property>
+                    <property name="title">
+                     <string>General Options</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_22">
+                     <property name="leftMargin">
+                      <number>10</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>10</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_11">
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QCheckBox" name="prompt_weight_checkbox">
+                         <property name="text">
+                          <string>Prompt Weighting</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="latent_upscale_2x">
+                         <property name="text">
+                          <string>2x Latent</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="nsfw_checkbox">
+                         <property name="text">
+                          <string>NSFW</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
                   </item>
                  </layout>
                 </widget>

@@ -1,12 +1,10 @@
 import os.path
 
-# import re
-
+import PIL
 import cv2
 import numpy as np
 import torch
-from PIL import Image
-from PIL.ImageQt import fromqpixmap
+from PIL import Image, ImageQt
 from PySide6.QtCore import Qt, Signal, Slot, QObject
 from compel import Compel
 from controlnet_aux import OpenposeDetector, HEDdetector, MLSDdetector
@@ -14,20 +12,24 @@ from torchvision.transforms import transforms
 import diffusers
 import transformers
 
+from scripts.VQFR.predict import Predictor
+
 
 class StableDiffusion(QObject):
     img_started = Signal()
     img_finished = Signal()
 
     def __init__(self, parent=None):
-        super(StableDiffusion, self).__init__()
+        super().__init__()
         self.parent = parent
-        self.model_dir = os.path.join(
-            os.path.abspath(os.path.dirname("purDi")), "models"
-        )
+
+        self._base_dir = os.path.abspath("models")
+        self.upscaler_dir = os.path.join(self._base_dir, "upscalers")
+        self.output_dir = os.path.abspath('output')
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.output_type = (
-            "pil" if not self.parent.ui.latent_upscale_2x.isChecked() else "latent"
+            "latent" if self.parent.ui.latent_upscale_2x.isChecked() else "pil"
         )
         self.callback_step = 1
 
@@ -93,7 +95,7 @@ class StableDiffusion(QObject):
             "runwayml/stable-diffusion-v1-5",
             controlnet=network,
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
@@ -120,9 +122,9 @@ class StableDiffusion(QObject):
             if self.parent.ui.save_controlnet_input_maps_checkbox.isChecked():
                 name = f"CN_{positive[:60]}"
                 self.save_images(
-                    image_list=[input_img],
-                    seed_list=[0],
-                    filename=name,
+                    image=[input_img],
+                    seed=0,
+                    name=name,
                     suffix=img_map_suffix,
                 )
 
@@ -154,7 +156,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"CN_{positive[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -163,7 +165,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "lllyasviel/sd-controlnet-canny",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -194,7 +196,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-openpose",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -213,7 +215,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-depth",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -234,7 +236,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-hed",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -251,7 +253,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-mlsd",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -268,7 +270,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-scribble",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -287,7 +289,7 @@ class StableDiffusion(QObject):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-seg",
             torch_dtype=torch.float16,
-            cache_dir=f"{self.model_dir}/controlnet",
+            cache_dir=f"{self._base_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -403,7 +405,7 @@ class StableDiffusion(QObject):
             torch_dtype=torch.float16,
             caption_generator=model,
             caption_processor=processor,
-            cache_dir=self.model_dir,
+            cache_dir=self._base_dir,
         )
         pipe.scheduler = diffusers.DDIMScheduler.from_config(pipe.scheduler.config)
         pipe.inverse_scheduler = diffusers.DDIMInverseScheduler.from_config(
@@ -495,7 +497,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"P2P_{caption[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -521,7 +523,7 @@ class StableDiffusion(QObject):
         pipe = diffusers.StableDiffusionSAGPipeline.from_pretrained(
             "stabilityai/stable-diffusion-2-1-base",
             torch_dtype=torch.float16,
-            cache_dir=self.model_dir,
+            cache_dir=self._base_dir,
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.sliced_vae_check(pipe)
@@ -561,7 +563,7 @@ class StableDiffusion(QObject):
                 )
 
             name = f"SAG_{positive[:60]}"
-            self.save_images(image_list=image, seed_list=seed[1], filename=name)
+            self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -588,7 +590,7 @@ class StableDiffusion(QObject):
         # TODO: should works with any version of Stable Diffusion but 2-1-768 gets OOM Error on 3080
         model_id = "stabilityai/stable-diffusion-2-1-base"
         pipe = diffusers.CycleDiffusionPipeline.from_pretrained(
-            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+            model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
         )
         pipe.scheduler = diffusers.DDIMScheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
@@ -629,7 +631,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"CD_{positive[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -656,7 +658,7 @@ class StableDiffusion(QObject):
         pipe = diffusers.StableDiffusionImageVariationPipeline.from_pretrained(
             "lambdalabs/sd-image-variations-diffusers",
             revision="v2.0",
-            cache_dir=self.model_dir,
+            cache_dir=self._base_dir,
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
 
@@ -711,7 +713,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"IV"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -739,7 +741,7 @@ class StableDiffusion(QObject):
         pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained(
             "timbrooks/instruct-pix2pix",
             torch_dtype=torch.float16,
-            cache_dir=self.model_dir,
+            cache_dir=self._base_dir,
         )
 
         self.cpu_offload_check(pipe)
@@ -783,7 +785,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"IP2P_{positive[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -818,9 +820,9 @@ class StableDiffusion(QObject):
         model_id = "stabilityai/stable-diffusion-2-inpainting"
         # model_id = "runwayml/stable-diffusion-inpainting"
         pipe = diffusers.StableDiffusionInpaintPipeline.from_pretrained(
-            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+            model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
         )
-        # pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
+        pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
 
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
@@ -837,11 +839,13 @@ class StableDiffusion(QObject):
             self.parent.ui.generate_img_progress.setValue(t)
             self.parent.image_viewer.scene.show_image(img, is_latent=True)
 
+        restore_face = Predictor(
+            model_dir=self.upscaler_dir,
+            output_dir=self.output_dir
+        )
+
         for img in i2i_list:
-            # TODO: fix issue
-            # initial_img = self.img2pillow(file=img)
-            dir = os.path.abspath("output")
-            initial_img = Image.open(os.path.join(dir, "init.png"))
+            initial_img = self.img2pillow(file=img)
 
             for n in range(n_image):
                 seed = self.random_or_manual_seed(self.device)
@@ -863,15 +867,27 @@ class StableDiffusion(QObject):
                         output_type=self.output_type,
                         callback=live_img_preview,
                         callback_steps=self.callback_step,
-                    ).images
+                    ).images[0]
 
                 if self.parent.ui.latent_upscale_2x.isChecked():
                     image = self.latent_upscaler_2x(
                         prompt=positive, latent=image, steps=steps, seed=seed[0]
                     )
 
-                name = f"I2I_{positive[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.parent.image_viewer.scene.show_image(image)
+                image_name = f"I2I_{positive[:60]}"
+                img_uri = self.save_images(
+                    image=image, seed=seed[1], name=image_name
+                )
+
+                restored_image = restore_face.predict(image=img_uri)
+                self.parent.image_viewer.scene.show_image(restored_image)
+                self.save_images(
+                    image=restored_image,
+                    seed=seed[1],
+                    name=image_name,
+                    suffix="vqfr"
+                )
 
         self.img_finished.emit()
 
@@ -897,7 +913,7 @@ class StableDiffusion(QObject):
 
         model_id = "stabilityai/stable-diffusion-2-1-base"
         pipe = diffusers.StableDiffusionImg2ImgPipeline.from_pretrained(
-            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+            model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
 
@@ -945,7 +961,7 @@ class StableDiffusion(QObject):
                     )
 
                 name = f"I2I_{positive[:60]}"
-                self.save_images(image_list=image, seed_list=seed[1], filename=name)
+                self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -971,7 +987,7 @@ class StableDiffusion(QObject):
 
         model_id = "CompVis/stable-diffusion-v1-4"
         pipe = diffusers.StableDiffusionAttendAndExcitePipeline.from_pretrained(
-            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+            model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
 
@@ -1030,7 +1046,7 @@ class StableDiffusion(QObject):
 
             strip_quotes = positive.replace('"', "")
             name = f"AE_{strip_quotes[:60]}"
-            self.save_images(image_list=image, seed_list=seed[1], filename=name)
+            self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -1054,7 +1070,7 @@ class StableDiffusion(QObject):
 
         model_id = "CompVis/stable-diffusion-v1-4"
         pipe = diffusers.StableDiffusionPanoramaPipeline.from_pretrained(
-            model_id, torch_dtype=torch.float16, cache_dir=self.model_dir
+            model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
         )
         pipe.scheduler = diffusers.DDIMScheduler.from_pretrained(
             model_id, subfolder="scheduler"
@@ -1100,7 +1116,7 @@ class StableDiffusion(QObject):
                 )
 
             name = f"MD_{positive[:60]}"
-            self.save_images(image_list=image, seed_list=seed[1], filename=name)
+            self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -1172,7 +1188,7 @@ class StableDiffusion(QObject):
                 )
 
             name = f"t2i_{positive[:60]}"
-            self.save_images(image_list=image, seed_list=seed[1], filename=name)
+            self.save_images(image=image, seed=seed[1], name=name)
 
         self.img_finished.emit()
 
@@ -1190,9 +1206,11 @@ class StableDiffusion(QObject):
     @staticmethod
     def img2pillow(file):
         if isinstance(file, str):
-            initial_img = Image.open(file).convert("RGB")
+            # initial_img = Image.open(file).convert("RGB")
+            initial_img = Image.open(file)
         else:
-            initial_img = file.convert("RGB")
+            # initial_img = file.convert("RGB")
+            initial_img = file
         return initial_img
 
     def nsfw_check(self, pipe_line):
@@ -1200,21 +1218,22 @@ class StableDiffusion(QObject):
             pipe_line.register_to_config(safety_checker=None)
 
     def save_images(
-        self, image_list: list[Image], seed_list: list[int], filename, suffix=""
-    ) -> None:
+        self, image, seed: int, name, suffix="", image_format=".png"
+    ) -> str:
         """
         Utility method for saving images from Diffuser pipelines
-        :param image_list: list[PIL.Image]
-        :param seed_list: int from random_or_manual_seed()
-        :param filename: string variable
+        :param image: list[PIL.Image]
+        :param seed: int from random_or_manual_seed()
+        :param name: string variable
         :param suffix: additional text before file extension
+        :param image_format:
         """
-        image_format = ".png"
-        for image, seed in zip(image_list, seed_list):
-            self.parent.image_viewer.scene.show_image(image)
-            path = f"output/{filename.replace(' ', '_').replace(',', '')}_{seed}_{suffix}{image_format}"
-            Image.Image.save(image, path)
-            # print(f"Image saved as: {path}")
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+
+        path = f"{self.output_dir}/{name.replace(' ', '_').replace(',', '')}_{seed}_{suffix}{image_format}"
+        Image.Image.save(image, path)
+        return path
 
     def random_or_manual_seed(self, device) -> [list[torch.Generator], list[int]]:
         """
@@ -1416,18 +1435,18 @@ class StableDiffusion(QObject):
         elif inference_type == "img2img":
             image_list = []
 
+            # takes selected images from the QGraphicsScene a.k.a Canvas
+            if len(self.parent.image_viewer.scene.selectedItems()) >= 1:
+                for item in self.parent.image_viewer.scene.selectedItems():
+                    img = PIL.Image.fromqpixmap(item.pixmap())
+                    image_list.append(img)
+
             # stores images from the img2img selection box on the right sidebar into a list
-            if self.parent.ui.img2img_select_box.count() >= 1:
+            elif self.parent.ui.img2img_select_box.count() >= 1:
                 for index in range(self.parent.ui.img2img_select_box.count()):
                     image_list.append(
                         self.parent.ui.img2img_select_box.item(index).text()
                     )
-
-            # takes selected images from the QGraphicsScene a.k.a Canvas
-            elif len(self.parent.image_viewer.scene.selectedItems()) >= 1:
-                for item in self.parent.image_viewer.scene.selectedItems():
-                    img = fromqpixmap(item.pixmap())
-                    image_list.append(img)
 
             # uses images that are selected from the left sidebar image browser
             # elif len(self.parent.ui.image_browser.selectedIndexes()) >= 1:
