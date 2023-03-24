@@ -12,9 +12,9 @@ from scripts.VQFR.vqfr.demo_util import VQFR_Demo
 
 class Predictor(BasePredictor):
     def __init__(
-            self,
-            model_dir: os.path = os.path.abspath('models'),
-            output_dir: os.path = os.path.abspath('output'),
+        self,
+        model_dir: os.path = os.path.abspath("models"),
+        output_dir: os.path = os.path.abspath("output"),
     ):
         self.restorer = None
         self.output_dir = output_dir
@@ -24,7 +24,9 @@ class Predictor(BasePredictor):
 
         self.setup()
 
-    def setup(self,):
+    def setup(
+        self,
+    ):
         # bg_upsampler = "realesrgan"
         real_esrgan_model_path = os.path.join(self.model_dir, self.real_esrgan_name)
         bg_tile = 400

@@ -8,7 +8,7 @@ from scripts.VQFR.vqfr.utils import get_root_logger
 from scripts.VQFR.vqfr.utils.registry import LOSS_REGISTRY
 from scripts.VQFR.vqfr.losses.loss_util import weighted_loss
 
-_reduction_modes = ['none', 'mean', 'sum']
+_reduction_modes = ["none", "mean", "sum"]
 
 
 def build_loss(opt):
@@ -19,38 +19,37 @@ def build_loss(opt):
             type (str): Model type.
     """
     opt = deepcopy(opt)
-    loss_type = opt.pop('type')
-    if 'Multi' in loss_type:
+    loss_type = opt.pop("type")
+    if "Multi" in loss_type:
         loss = LOSS_REGISTRY.get(loss_type)(opt)
     else:
         loss = LOSS_REGISTRY.get(loss_type)(**opt)
     logger = get_root_logger()
-    logger.info(f'Loss [{loss.__class__.__name__}] is created.')
+    logger.info(f"Loss [{loss.__class__.__name__}] is created.")
     return loss
 
 
 @weighted_loss
 def l1_loss(pred, target):
-    return F.l1_loss(pred, target, reduction='none')
+    return F.l1_loss(pred, target, reduction="none")
 
 
 @weighted_loss
 def mse_loss(pred, target):
-    return F.mse_loss(pred, target, reduction='none')
+    return F.mse_loss(pred, target, reduction="none")
 
 
 @weighted_loss
 def charbonnier_loss(pred, target, eps=1e-12):
-    return torch.sqrt((pred - target)**2 + eps)
+    return torch.sqrt((pred - target) ** 2 + eps)
 
 
 @LOSS_REGISTRY.register()
 class CrossEntropyLoss(nn.Module):
-
-    def __init__(self, loss_weight=1.0, reduction='mean', ignore_index=-1):
+    def __init__(self, loss_weight=1.0, reduction="mean", ignore_index=-1):
         super(CrossEntropyLoss, self).__init__()
-        if reduction not in ['none', 'mean', 'sum']:
-            raise ValueError(f'Unsupported reduction mode: {reduction}.')
+        if reduction not in ["none", "mean", "sum"]:
+            raise ValueError(f"Unsupported reduction mode: {reduction}.")
 
         self.loss_weight = loss_weight
         self.reduction = reduction
@@ -60,12 +59,12 @@ class CrossEntropyLoss(nn.Module):
         input = input.reshape(-1, input.shape[-1])
         target = target.reshape(-1)
         return self.loss_weight * F.cross_entropy(
-            input, target, reduction=self.reduction, ignore_index=self.ignore_index)
+            input, target, reduction=self.reduction, ignore_index=self.ignore_index
+        )
 
 
 @LOSS_REGISTRY.register()
 class MultiQuantMatchLoss(nn.Module):
-
     def __init__(self, loss_opt):
         super(MultiQuantMatchLoss, self).__init__()
         self.loss_dict = nn.ModuleDict()
@@ -75,8 +74,8 @@ class MultiQuantMatchLoss(nn.Module):
     def forward(self, pred_dict, target_dict):
         loss = 0.0
         for level_name in pred_dict.keys():
-            pred = pred_dict[level_name]['z_conv']
-            target = target_dict[level_name]['z_quant_before_conv']
+            pred = pred_dict[level_name]["z_conv"]
+            target = target_dict[level_name]["z_quant_before_conv"]
             loss += self.loss_dict[level_name](pred, target)
         return loss
 
@@ -91,10 +90,12 @@ class L1Loss(nn.Module):
             Supported choices are 'none' | 'mean' | 'sum'. Default: 'mean'.
     """
 
-    def __init__(self, loss_weight=1.0, reduction='mean'):
+    def __init__(self, loss_weight=1.0, reduction="mean"):
         super(L1Loss, self).__init__()
-        if reduction not in ['none', 'mean', 'sum']:
-            raise ValueError(f'Unsupported reduction mode: {reduction}. Supported ones are: {_reduction_modes}')
+        if reduction not in ["none", "mean", "sum"]:
+            raise ValueError(
+                f"Unsupported reduction mode: {reduction}. Supported ones are: {_reduction_modes}"
+            )
 
         self.loss_weight = loss_weight
         self.reduction = reduction
@@ -107,7 +108,9 @@ class L1Loss(nn.Module):
             weight (Tensor, optional): of shape (N, C, H, W). Element-wise
                 weights. Default: None.
         """
-        return self.loss_weight * l1_loss(pred, target, weight, reduction=self.reduction)
+        return self.loss_weight * l1_loss(
+            pred, target, weight, reduction=self.reduction
+        )
 
 
 @LOSS_REGISTRY.register()
@@ -120,10 +123,12 @@ class MSELoss(nn.Module):
             Supported choices are 'none' | 'mean' | 'sum'. Default: 'mean'.
     """
 
-    def __init__(self, loss_weight=1.0, reduction='mean'):
+    def __init__(self, loss_weight=1.0, reduction="mean"):
         super(MSELoss, self).__init__()
-        if reduction not in ['none', 'mean', 'sum']:
-            raise ValueError(f'Unsupported reduction mode: {reduction}. Supported ones are: {_reduction_modes}')
+        if reduction not in ["none", "mean", "sum"]:
+            raise ValueError(
+                f"Unsupported reduction mode: {reduction}. Supported ones are: {_reduction_modes}"
+            )
 
         self.loss_weight = loss_weight
         self.reduction = reduction
@@ -136,7 +141,9 @@ class MSELoss(nn.Module):
             weight (Tensor, optional): of shape (N, C, H, W). Element-wise
                 weights. Default: None.
         """
-        return self.loss_weight * mse_loss(pred, target, weight, reduction=self.reduction)
+        return self.loss_weight * mse_loss(
+            pred, target, weight, reduction=self.reduction
+        )
 
 
 @LOSS_REGISTRY.register()
@@ -151,25 +158,27 @@ class GANLoss(nn.Module):
             for discriminators.
     """
 
-    def __init__(self, gan_type, real_label_val=1.0, fake_label_val=0.0, loss_weight=1.0):
+    def __init__(
+        self, gan_type, real_label_val=1.0, fake_label_val=0.0, loss_weight=1.0
+    ):
         super(GANLoss, self).__init__()
         self.gan_type = gan_type
         self.loss_weight = loss_weight
         self.real_label_val = real_label_val
         self.fake_label_val = fake_label_val
 
-        if self.gan_type == 'vanilla':
+        if self.gan_type == "vanilla":
             self.loss = nn.BCEWithLogitsLoss()
-        elif self.gan_type == 'lsgan':
+        elif self.gan_type == "lsgan":
             self.loss = nn.MSELoss()
-        elif self.gan_type == 'wgan':
+        elif self.gan_type == "wgan":
             self.loss = self._wgan_loss
-        elif self.gan_type == 'wgan_softplus':
+        elif self.gan_type == "wgan_softplus":
             self.loss = self._wgan_softplus_loss
-        elif self.gan_type == 'hinge':
+        elif self.gan_type == "hinge":
             self.loss = nn.ReLU()
         else:
-            raise NotImplementedError(f'GAN type {self.gan_type} is not implemented.')
+            raise NotImplementedError(f"GAN type {self.gan_type} is not implemented.")
 
     def _wgan_loss(self, input, target):
         """wgan loss.
@@ -205,9 +214,9 @@ class GANLoss(nn.Module):
                 return Tensor.
         """
 
-        if self.gan_type in ['wgan', 'wgan_softplus']:
+        if self.gan_type in ["wgan", "wgan_softplus"]:
             return target_is_real
-        target_val = (self.real_label_val if target_is_real else self.fake_label_val)
+        target_val = self.real_label_val if target_is_real else self.fake_label_val
         return input.new_ones(input.size()) * target_val
 
     def forward(self, input, target_is_real, is_disc=False):
@@ -222,7 +231,7 @@ class GANLoss(nn.Module):
             Tensor: GAN loss value.
         """
         target_label = self.get_target_label(input, target_is_real)
-        if self.gan_type == 'hinge':
+        if self.gan_type == "hinge":
             if is_disc:  # for discriminators in hinge-gan
                 input = -input if target_is_real else input
                 loss = self.loss(1 + input).mean()
@@ -237,15 +246,17 @@ class GANLoss(nn.Module):
 
 def r1_penalty(real_pred, real_img):
     """R1 regularization for discriminator. The core idea is to
-        penalize the gradient on real data alone: when the
-        generator distribution produces the true data distribution
-        and the discriminator is equal to 0 on the data manifold, the
-        gradient penalty ensures that the discriminator cannot create
-        a non-zero gradient orthogonal to the data manifold without
-        suffering a loss in the GAN game.
-        Ref:
-        Eq. 9 in Which training methods for GANs do actually converge.
-        """
-    grad_real = autograd.grad(outputs=real_pred.sum(), inputs=real_img, create_graph=True)[0]
+    penalize the gradient on real data alone: when the
+    generator distribution produces the true data distribution
+    and the discriminator is equal to 0 on the data manifold, the
+    gradient penalty ensures that the discriminator cannot create
+    a non-zero gradient orthogonal to the data manifold without
+    suffering a loss in the GAN game.
+    Ref:
+    Eq. 9 in Which training methods for GANs do actually converge.
+    """
+    grad_real = autograd.grad(
+        outputs=real_pred.sum(), inputs=real_img, create_graph=True
+    )[0]
     grad_penalty = grad_real.pow(2).view(grad_real.shape[0], -1).sum(1).mean()
     return grad_penalty

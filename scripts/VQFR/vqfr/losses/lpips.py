@@ -8,19 +8,21 @@ from torchvision import models
 
 from scripts.VQFR.vqfr.utils.registry import LOSS_REGISTRY
 
-VGG_PRETRAIN_PATH = 'experiments/pretrained_models/vgg16-397923af.pth'
-VGG_LPIPS_PRETRAIN_PATH = 'experiments/pretrained_models/lpips/vgg.pth'
+VGG_PRETRAIN_PATH = "experiments/pretrained_models/vgg16-397923af.pth"
+VGG_LPIPS_PRETRAIN_PATH = "experiments/pretrained_models/lpips/vgg.pth"
 
 
 @LOSS_REGISTRY.register()
 class LPIPS(nn.Module):
     # Learned perceptual metric
-    def __init__(self,
-                 perceptual_weight=1.0,
-                 style_weight=0.0,
-                 inp_range=(-1, 1),
-                 use_dropout=True,
-                 style_measure='L1'):
+    def __init__(
+        self,
+        perceptual_weight=1.0,
+        style_weight=0.0,
+        inp_range=(-1, 1),
+        use_dropout=True,
+        style_measure="L1",
+    ):
         super().__init__()
         self.perceptual_weight = perceptual_weight
         self.style_weight = style_weight
@@ -47,8 +49,10 @@ class LPIPS(nn.Module):
 
     def load_from_pretrained(self):
         ckpt = VGG_LPIPS_PRETRAIN_PATH
-        self.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu')), strict=False)
-        print('loaded pretrained LPIPS loss from {}'.format(ckpt))
+        self.load_state_dict(
+            torch.load(ckpt, map_location=torch.device("cpu")), strict=False
+        )
+        print("loaded pretrained LPIPS loss from {}".format(ckpt))
 
     def _gram_mat(self, x):
         """Calculate Gram matrix.
@@ -70,10 +74,15 @@ class LPIPS(nn.Module):
         lins = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
 
         for kk in range(len(self.chns)):
-            feats0[kk], feats1[kk] = normalize_tensor(outs0[kk]), normalize_tensor(outs1[kk])
-            diffs[kk] = (feats0[kk] - feats1[kk])**2
+            feats0[kk], feats1[kk] = normalize_tensor(outs0[kk]), normalize_tensor(
+                outs1[kk]
+            )
+            diffs[kk] = (feats0[kk] - feats1[kk]) ** 2
 
-        res = [spatial_average(lins[kk].model(diffs[kk]), keepdim=True) for kk in range(len(self.chns))]
+        res = [
+            spatial_average(lins[kk].model(diffs[kk]), keepdim=True)
+            for kk in range(len(self.chns))
+        ]
         val = res[0]
         for layer in range(1, len(self.chns)):
             val += res[layer]
@@ -83,10 +92,14 @@ class LPIPS(nn.Module):
         if self.style_weight > 0:
             style_loss = 0
             for kk in range(len(self.chns)):
-                if self.style_measure == 'L1':
-                    style_loss += F.l1_loss(self._gram_mat(feats0[kk]), self._gram_mat(feats1[kk]))
-                elif self.style_measure == 'L2':
-                    style_loss += F.mse_loss(self._gram_mat(feats0[kk]), self._gram_mat(feats1[kk]))
+                if self.style_measure == "L1":
+                    style_loss += F.l1_loss(
+                        self._gram_mat(feats0[kk]), self._gram_mat(feats1[kk])
+                    )
+                elif self.style_measure == "L2":
+                    style_loss += F.mse_loss(
+                        self._gram_mat(feats0[kk]), self._gram_mat(feats1[kk])
+                    )
                 else:
                     raise NotImplementedError
             style_loss *= self.style_weight
@@ -97,18 +110,29 @@ class LPIPS(nn.Module):
 
 
 class ScalingLayer(nn.Module):
-
     def __init__(self, inp_range):
         super(ScalingLayer, self).__init__()
-        self.register_buffer('shift', torch.Tensor([-.030, -.088, -.188])[None, :, None, None])
-        self.register_buffer('scale', torch.Tensor([.458, .448, .450])[None, :, None, None])
+        self.register_buffer(
+            "shift", torch.Tensor([-0.030, -0.088, -0.188])[None, :, None, None]
+        )
+        self.register_buffer(
+            "scale", torch.Tensor([0.458, 0.448, 0.450])[None, :, None, None]
+        )
 
         if min(inp_range) == -1 and max(inp_range) == 1:
-            self.register_buffer('mean', torch.Tensor([0., 0., 0.])[None, :, None, None])
-            self.register_buffer('std', torch.Tensor([1., 1., 1.])[None, :, None, None])
+            self.register_buffer(
+                "mean", torch.Tensor([0.0, 0.0, 0.0])[None, :, None, None]
+            )
+            self.register_buffer(
+                "std", torch.Tensor([1.0, 1.0, 1.0])[None, :, None, None]
+            )
         elif min(inp_range) == 0 and max(inp_range) == 1:
-            self.register_buffer('mean', torch.Tensor([0.5, 0.5, 0.5])[None, :, None, None])
-            self.register_buffer('std', torch.Tensor([0.5, 0.5, 0.5])[None, :, None, None])
+            self.register_buffer(
+                "mean", torch.Tensor([0.5, 0.5, 0.5])[None, :, None, None]
+            )
+            self.register_buffer(
+                "std", torch.Tensor([0.5, 0.5, 0.5])[None, :, None, None]
+            )
         else:
             raise NotImplementedError
 
@@ -118,13 +142,17 @@ class ScalingLayer(nn.Module):
 
 
 class NetLinLayer(nn.Module):
-    """ A single linear layer which does a 1x1 conv """
+    """A single linear layer which does a 1x1 conv"""
 
     def __init__(self, chn_in, chn_out=1, use_dropout=False):
         super(NetLinLayer, self).__init__()
-        layers = [
-            nn.Dropout(),
-        ] if (use_dropout) else []
+        layers = (
+            [
+                nn.Dropout(),
+            ]
+            if (use_dropout)
+            else []
+        )
         layers += [
             nn.Conv2d(chn_in, chn_out, 1, stride=1, padding=0, bias=False),
         ]
@@ -132,11 +160,12 @@ class NetLinLayer(nn.Module):
 
 
 class vgg16(torch.nn.Module):
-
     def __init__(self, pretrained=True, requires_grad=False):
         super(vgg16, self).__init__()
         vgg_pretrained = models.vgg16(pretrained=False)
-        vgg_pretrained.load_state_dict(torch.load(VGG_PRETRAIN_PATH, map_location='cpu'))
+        vgg_pretrained.load_state_dict(
+            torch.load(VGG_PRETRAIN_PATH, map_location="cpu")
+        )
         vgg_pretrained_features = vgg_pretrained.features
 
         self.slice1 = torch.nn.Sequential()
@@ -170,7 +199,9 @@ class vgg16(torch.nn.Module):
         h_relu4_3 = h
         h = self.slice5(h)
         h_relu5_3 = h
-        vgg_outputs = namedtuple('VggOutputs', ['relu1_2', 'relu2_2', 'relu3_3', 'relu4_3', 'relu5_3'])
+        vgg_outputs = namedtuple(
+            "VggOutputs", ["relu1_2", "relu2_2", "relu3_3", "relu4_3", "relu5_3"]
+        )
         out = vgg_outputs(h_relu1_2, h_relu2_2, h_relu3_3, h_relu4_3, h_relu5_3)
         return out
 

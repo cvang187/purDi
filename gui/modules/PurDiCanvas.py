@@ -619,6 +619,7 @@ class PurDiCanvasView(QGraphicsView):
         import scripts.iColoriT.modeling
 
         import warnings
+
         warnings.filterwarnings("ignore", category=UserWarning)
 
         device = "cuda" if torch.cuda.is_available() else "cpu"

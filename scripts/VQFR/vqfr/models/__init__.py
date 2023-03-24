@@ -18,7 +18,8 @@ model_filenames = [
 ]
 # import all the model modules
 _model_modules = [
-    importlib.import_module(f"scripts.VQFR.vqfr.models.{file_name}") for file_name in model_filenames
+    importlib.import_module(f"scripts.VQFR.vqfr.models.{file_name}")
+    for file_name in model_filenames
 ]
 
 

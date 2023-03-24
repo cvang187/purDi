@@ -1,8 +1,11 @@
 # This Python file uses the following encoding: utf-8
 import os.path
 
+import numpy as np
+from PIL import Image
+import diffusers
 import torch
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui
 from PySide6.QtCore import (
     Qt,
     Slot,
@@ -17,11 +20,7 @@ from PySide6.QtGui import (
     QStandardItemModel,
     QIcon,
     QMoveEvent,
-    QPainter,
-    QPen,
-    QBrush,
     QPixmap,
-    QColor,
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
@@ -31,15 +30,14 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QWidget,
     QMenu,
-    QToolButton,
-    QGraphicsRectItem,
-    QGraphicsItem,
 )
+from compel import Compel
 from qt_material import QtStyleTools
 
 from gui.modules.PurDiCanvas import PurDiCanvasView, UndoRedoItemMoved
 from gui.purDi_Actions import PurDiActions
 from gui.ui_form import Ui_BasePurDi
+from scripts.VQFR.predict import Predictor
 from scripts.diffusers.stable_diffusion import StableDiffusion
 
 
@@ -269,27 +267,25 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
         self.full_screen = False
 
+        attend_excite_pixmap = QPixmap("gui/images/txt2img/attend-excite.png")
+        self.ui.attend_excite_pixmap.setPixmap(attend_excite_pixmap)
+        multi_diffusion_pixmap = QPixmap("gui/images/txt2img/multi_diffusion.png")
+        self.ui.multi_diffusion_pixmap.setPixmap(multi_diffusion_pixmap)
+        vqfr_comparision_pixmap = QPixmap("gui/images/vqfr/comparison-small.jpg")
+        self.ui.vqfr_pixmap.setPixmap(vqfr_comparision_pixmap)
+        cycle_diffusion_pixmap = QPixmap("gui/images/img2img/cycle_diffusion.png")
+        self.ui.cycle_diffusion_pixmap.setPixmap(cycle_diffusion_pixmap)
+        image_variation_pixmap = QPixmap("gui/images/img2img/image-variations.jpg")
+        self.ui.image_variations_pixmap.setPixmap(image_variation_pixmap)
+        instruct_pix2pix_pixmap = QPixmap("gui/images/img2img/instruct_pix2pix.png")
+        self.ui.instruct_pix2pix_pixmap.setPixmap(instruct_pix2pix_pixmap)
+        zero_pix2pix_pixmap = QPixmap("gui/images/img2img/zero-pix2pix.png")
+        self.ui.zero_pix2pix_pixmap.setPixmap(zero_pix2pix_pixmap)
+
         if os.path.exists("my_theme.xml"):
             self.apply_stylesheet(self, "my_theme.xml")
         else:
             self.apply_stylesheet(self, "dark_teal.xml")
-
-        attend_excite_pixmap = QPixmap('gui/images/txt2img/attend-excite.png')
-        self.ui.attend_excite_pixmap.setPixmap(attend_excite_pixmap)
-
-        multi_diffusion_pixmap = QPixmap('gui/images/txt2img/multi_diffusion.png')
-        self.ui.multi_diffusion_pixmap.setPixmap(multi_diffusion_pixmap)
-
-        vqfr_comparision_pixmap = QPixmap('gui/images/vqfr/comparison-small.jpg')
-        self.ui.vqfr_pixmap.setPixmap(vqfr_comparision_pixmap)
-        cycle_diffusion_pixmap = QPixmap('gui/images/img2img/cycle_diffusion.png')
-        self.ui.cycle_diffusion_pixmap.setPixmap(cycle_diffusion_pixmap)
-        image_variation_pixmap = QPixmap('gui/images/img2img/image-variations.jpg')
-        self.ui.image_variations_pixmap.setPixmap(image_variation_pixmap)
-        instruct_pix2pix_pixmap = QPixmap('gui/images/img2img/instruct_pix2pix.png')
-        self.ui.instruct_pix2pix_pixmap.setPixmap(instruct_pix2pix_pixmap)
-        zero_pix2pix_pixmap = QPixmap('gui/images/img2img/zero-pix2pix.png')
-        self.ui.zero_pix2pix_pixmap.setPixmap(zero_pix2pix_pixmap)
 
     @Slot()
     def inference(self):
@@ -557,29 +553,83 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
 
 class StableDiffusionRunnable(QRunnable):
+    """
+    SD QRunnable used for QThreadpool to manage multi-threading so
+    GUI does not freeze up when running inference.
+    """
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
-        self.sd_inference = StableDiffusion(parent)
-        self.inference_type = None
+        self.pipeline = StableDiffusion(parent)
 
-        self.sd_inference.img_started.connect(self.parent.disable_generate_img_button)
+        # User params from GUI
+        self.positive = "a award winning painting of a house by the ocean"
+        self.negative = ""
+        self.width = 512
+        self.height = 512
+        self.n_images = 1
+        self.n_batch = 1
+        self.n_steps = 20
+        self.scheduler = diffusers.DDIMScheduler
+        self.cfg = 6
+        self.i2i_list = []
+        self.img2img_strength = 7.5
 
-        self.sd_inference.img_finished.connect(
-            self.parent.re_enable_generate_img_button
-        )
-        self.sd_inference.img_finished.connect(
-            self.parent.ui.image_browser.generate_cache
-        )
-        self.sd_inference.img_finished.connect(
+        self._base_dir = os.path.abspath("models")
+        self.upscaler_dir = os.path.join(self._base_dir, "upscalers")
+        self.output_dir = os.path.abspath("output")
+
+        self.pipeline.img_started.connect(self.parent.disable_generate_img_button)
+        self.pipeline.img_finished.connect(self.parent.re_enable_generate_img_button)
+        self.pipeline.img_finished.connect(self.parent.ui.image_browser.generate_cache)
+        self.pipeline.img_finished.connect(
             self.parent.image_viewer.scene.delete_latents_from_scene
         )
 
     def run(self):
+        self.update_user_params()
+        images = self.get_images()
+
+        restore_face = Predictor(
+            model_dir=self.upscaler_dir, output_dir=self.output_dir
+        )
+
+        for img in images:
+            image = img[0]
+            seed = img[1]
+            if self.parent.ui.latent_upscale_2x.isChecked():
+                image = self.latent_upscaler_2x(
+                    prompt=self.positive, latent=img[0], steps=self.n_steps, seed=seed
+                )
+
+            self.parent.image_viewer.scene.show_image(image)
+            image_name = f"I2I_{self.positive[:60]}"
+            img_uri = self.save_images(image=image, seed=seed, name=image_name)
+
+            restored_image = restore_face.predict(image=img_uri)
+            self.parent.image_viewer.scene.show_image(restored_image)
+            self.save_images(
+                image=restored_image, seed=seed, name=image_name, suffix="vqfr"
+            )
+
+    def get_images(self):
         """
         Flow control for Stable Diffusion inference mode. Prioritize image-to-image methods first
         then falls back to text-to-image.
         """
+        model_id = "stabilityai/stable-diffusion-2-1-base"
+        pipe = diffusers.DiffusionPipeline.from_pretrained(model_id, cache_dir=self._base_dir)
+
+        pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
+            pipe_line=pipe, positive=self.positive, negative=self.negative
+        )
+
+        def live_img_preview(i, t, latents):
+            img = pipe.decode_latents(latents)
+            img = img.squeeze()
+            self.parent.ui.generate_img_progress.setValue(t)
+            self.parent.image_viewer.scene.show_image(img, is_latent=True)
+            _ = i
 
         if (
             self.parent.ui.img2img_select_box.count() >= 1
@@ -597,41 +647,377 @@ class StableDiffusionRunnable(QRunnable):
                 scribble = "Scribble"
                 seg = "Semantic Segmentation"
 
+                user_params = (
+                    pos_prompt,
+                    neg_prompt,
+                    pos_emb,
+                    neg_emb,
+                    self.width,
+                    self.height,
+                    self.n_images,
+                    self.n_batch,
+                    self.n_steps,
+                    self.scheduler,
+                    self.cfg,
+                    self.i2i_list
+                )
+
                 if controlnet_current_selection == canny:
-                    self.inference_type = self.sd_inference.controlnet_canny()
+                    self.pipeline.controlnet_canny(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == depth_map:
-                    self.inference_type = self.sd_inference.controlnet_depth()
+                    self.pipeline.controlnet_depth(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == hed:
-                    self.inference_type = self.sd_inference.controlnet_hed()
+                    self.pipeline.controlnet_hed(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == mlsd:
-                    self.inference_type = self.sd_inference.controlnet_mlsd()
+                    self.pipeline.controlnet_mlsd(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == open_pose:
-                    self.inference_type = self.sd_inference.controlnet_openpose()
+                    self.pipeline.controlnet_openpose(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == scribble:
-                    self.inference_type = self.sd_inference.controlnet_scribble()
+                    self.pipeline.controlnet_scribble(
+                        user_params, callback=live_img_preview
+                    )
                 elif controlnet_current_selection == seg:
-                    self.inference_type = self.sd_inference.controlnet_seg()
+                    self.pipeline.controlnet_seg(
+                        user_params, callback=live_img_preview
+                    )
+
             elif self.parent.ui.img2img_image_variation_checkbox.isChecked():
-                self.inference_type = self.sd_inference.img2img_variation()
+                pipe = diffusers.StableDiffusionImageVariationPipeline.from_pretrained(
+                    "lambdalabs/sd-image-variations-diffusers",
+                    revision="v2.0",
+                    cache_dir=self._base_dir,
+                )
+
+                return self.pipeline.img2img_variation(
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.cycle_diffusion_checkbox.isChecked():
-                self.inference_type = self.sd_inference.cycle_diffusion()
+                model_id = "stabilityai/stable-diffusion-2-1-base"
+                pipe = diffusers.CycleDiffusionPipeline.from_pretrained(
+                    model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
+                )
+
+                return self.pipeline.cycle_diffusion(
+                    positive=self.positive,
+                    negative=self.negative,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    strength=self.img2img_strength,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.instruct_pix2pix_checkbox.isChecked():
-                self.inference_type = self.sd_inference.instruct_pix2pix()
+                img_guidance_scale = float(
+                    self.parent.ui.img_guidance_scale_field.text()
+                )
+                pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                    "timbrooks/instruct-pix2pix",
+                    torch_dtype=torch.float16,
+                    cache_dir=self._base_dir,
+                )
+
+                return self.pipeline.instruct_pix2pix(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    img_guidance=img_guidance_scale,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.pix2pix_zero_checkbox.isChecked():
-                self.inference_type = self.sd_inference.pix2pix_zero_image()
+                import transformers
+                captioner_id = "Salesforce/blip-image-captioning-base"
+                processor = transformers.BlipProcessor.from_pretrained(captioner_id)
+                model = transformers.BlipForConditionalGeneration.from_pretrained(
+                    captioner_id, torch_dtype=torch.float16, low_cpu_mem_usage=True
+                )
+
+                pipe = diffusers.StableDiffusionPix2PixZeroPipeline.from_pretrained(
+                    "CompVis/stable-diffusion-v1-4",
+                    torch_dtype=torch.float16,
+                    caption_generator=model,
+                    caption_processor=processor,
+                    cache_dir=self._base_dir,
+                )
+
+                self.pipeline.pix2pix_zero_image(
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.inpaint_checkbox.isChecked():
-                self.inference_type = self.sd_inference.inpaint()
+                model_id = "stabilityai/stable-diffusion-2-inpainting"
+                pipe = diffusers.StableDiffusionInpaintPipeline.from_pretrained(
+                    model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
+                )
+
+                return self.pipeline.inpaint(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             else:
-                self.inference_type = self.sd_inference.img2img()
+                model_id = "stabilityai/stable-diffusion-2-1-base"
+                pipe = diffusers.StableDiffusionImg2ImgPipeline.from_pretrained(
+                    model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
+                )
+
+                return self.pipeline.img2img(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    i2i_list=self.i2i_list,
+                    strength=self.img2img_strength,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
         else:
             if self.parent.ui.multidiffusion_panorama_checkbox.isChecked():
-                self.inference_type = self.sd_inference.multi_diffusion_panorama()
+                model_id = "CompVis/stable-diffusion-v1-4"
+                pipe = diffusers.StableDiffusionPanoramaPipeline.from_pretrained(
+                    model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
+                )
+                pipe.scheduler = diffusers.DDIMScheduler.from_pretrained(
+                    model_id, subfolder="scheduler"
+                )
+
+                return self.pipeline.multi_diffusion_panorama(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    cfg=self.cfg,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.self_attention_guidance_checkbox.isChecked():
-                self.inference_type = self.sd_inference.self_attention_guidance()
+                pipe = diffusers.StableDiffusionSAGPipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-2-1-base",
+                    torch_dtype=torch.float16,
+                    cache_dir=self._base_dir,
+                )
+
+                return self.pipeline.self_attention_guidance(
+                    positive=self.positive,
+                    negative=self.negative,
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             elif self.parent.ui.attend_excite_checkbox.isChecked():
-                self.inference_type = self.sd_inference.attend_and_excite()
+                model_id = "CompVis/stable-diffusion-v1-4"
+                pipe = diffusers.StableDiffusionAttendAndExcitePipeline.from_pretrained(
+                    model_id, torch_dtype=torch.float16, cache_dir=self._base_dir
+                )
+                max_alteration = int(self.parent.ui.max_iter_to_alter_field.text())
+
+                self.pipeline.attend_and_excite(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    max_alteration=max_alteration,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
             else:
-                self.inference_type = self.sd_inference.txt2img()
+                # TODO: fix......
+                base_path = os.path.abspath("models")
+                full_path = os.path.join(base_path, "stable-diffusion-2-1")
+
+                pipe = diffusers.StableDiffusionPipeline.from_pretrained(
+                    full_path, torch_dtype=torch.float16
+                )
+
+                self.pipeline.txt2img(
+                    pos_prompt=pos_prompt,
+                    neg_prompt=neg_prompt,
+                    pos_emb=pos_emb,
+                    neg_emb=neg_emb,
+                    width=self.width,
+                    height=self.height,
+                    n_image=self.n_images,
+                    n_batch=self.n_batch,
+                    n_steps=self.n_steps,
+                    scheduler=self.scheduler,
+                    cfg=self.cfg,
+                    pipe=pipe,
+                    live_preview=live_img_preview
+                )
+
+    def save_images(
+        self, image, seed: int, name, suffix="", image_format=".png"
+    ) -> str:
+        """
+        Utility method for saving images from Diffuser pipelines
+        :param image: list[PIL.Image]
+        :param seed: int from random_or_manual_seed()
+        :param name: string variable
+        :param suffix: additional text before file extension
+        :param image_format:
+        """
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+
+        path = f"{self.output_dir}/{name.replace(' ', '_').replace(',', '')}_{seed}_{suffix}{image_format}"
+        Image.Image.save(image, path)
+        return path
+
+    @staticmethod
+    def latent_upscaler_2x(prompt, latent, steps, seed):
+        upscaler = diffusers.StableDiffusionLatentUpscalePipeline.from_pretrained(
+            "stabilityai/sd-x2-latent-upscaler", torch_dtype=torch.float16
+        ).to("cuda")
+
+        output_img = upscaler(
+            prompt=prompt, image=latent, num_inference_steps=steps, generator=seed
+        ).images
+        return output_img
+
+    def prompt_weight_embedding(self, pipe_line, positive, negative):
+        """
+        Generates text embeddings for use in most diffuser pipelines
+        if prompt weighting is enabled in UI settings.
+        """
+        generate_embed = Compel(
+            tokenizer=pipe_line.tokenizer, text_encoder=pipe_line.text_encoder
+        )
+
+        prompt_weight_enabled = self.parent.ui.prompt_weight_checkbox.isChecked()
+
+        positive_text = positive if not prompt_weight_enabled else None
+        negative_text = negative if not prompt_weight_enabled else None
+        positive_emb = (
+            generate_embed.build_conditioning_tensor(positive)
+            if prompt_weight_enabled
+            else None
+        )
+        negative_emb = (
+            generate_embed.build_conditioning_tensor(negative)
+            if prompt_weight_enabled
+            else None
+        )
+
+        return positive_text, negative_text, positive_emb, negative_emb
+
+    def update_user_params(self) -> None:
+        """
+        Returns a list of all user defined parameters from the right side dock of the main window.
+        If a field is left blank, it will use the default value.
+        """
+
+        if len(self.parent.ui.prompt_positive_field.property("plainText")) != 0:
+            self.positive = self.parent.ui.prompt_positive_field.property("plainText")
+
+        if len(self.parent.ui.prompt_negative_field.property("plainText")) != 0:
+            self.negative = self.parent.ui.prompt_negative_field.property("plainText")
+
+        self.width = int(self.parent.ui.width_field.text())
+        self.height = int(self.parent.ui.height_field.text())
+        self.cfg = float(self.parent.ui.cfg_field.text())
+        self.n_steps = int(self.parent.ui.steps_field.text())
+        self.scheduler = self.parent.ui.scheduler_drop_down_box.currentData(
+            Qt.ItemDataRole.UserRole
+        )
+        self.n_images = (
+            int(self.parent.ui.select_n_sample.text())
+            if len(self.parent.ui.select_n_sample.text()) >= 1
+            else 1
+        )
+        self.n_batch = (
+            int(self.parent.ui.select_batch_size.text())
+            if len(self.parent.ui.select_batch_size.text()) >= 1
+            else 1
+        )
+
+        # images selected in QGraphicsScene
+        if len(self.parent.image_viewer.scene.selectedItems()) >= 1:
+            for item in self.parent.image_viewer.scene.selectedItems():
+                img = Image.fromqpixmap(item.pixmap())
+                self.i2i_list.append(img)
+
+        # images in top-right side img2img box
+        elif self.parent.ui.img2img_select_box.count() >= 1:
+            for index in range(self.parent.ui.img2img_select_box.count()):
+                self.i2i_list.append(
+                    self.parent.ui.img2img_select_box.item(index).text()
+                )
+
+        # images selected from left side image browser
+        # elif len(self.parent.ui.image_browser.selectedIndexes()) >= 1:
+        #     for index in self.parent.ui.image_browser.selectedIndexes():
+        #         img = index.data(Qt.ItemDataRole.DisplayRole)
+        #         image_list.append(img)
+
+        self.img2img_strength = (
+            float(self.parent.ui.img2img_strength_field.text()) / 100
+        )
 
 
 def main():
@@ -644,7 +1030,7 @@ def main():
 
     window.ui.right_top_dock_widget.setFixedWidth(400)
     window.show()
-    # window.resize(QtCore.QSize(1920, 1080))
+
     sys.exit(app.exec())
 
 

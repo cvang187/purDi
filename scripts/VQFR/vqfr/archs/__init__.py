@@ -23,8 +23,10 @@ arch_filenames = [
 #     importlib.import_module(f"vqfr.archs.{file_name}") for file_name in arch_filenames
 # ]
 _arch_modules = [
-    importlib.import_module(f"scripts.VQFR.vqfr.archs.{file_name}") for file_name in arch_filenames
+    importlib.import_module(f"scripts.VQFR.vqfr.archs.{file_name}")
+    for file_name in arch_filenames
 ]
+
 
 def build_network(opt):
     opt = deepcopy(opt)

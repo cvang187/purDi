@@ -4,7 +4,12 @@ from os import path as osp
 
 from scripts.VQFR.vqfr.data import build_dataloader, build_dataset
 from scripts.VQFR.vqfr.models import build_model
-from scripts.VQFR.vqfr.utils import get_env_info, get_root_logger, get_time_str, make_exp_dirs
+from scripts.VQFR.vqfr.utils import (
+    get_env_info,
+    get_root_logger,
+    get_time_str,
+    make_exp_dirs,
+)
 from scripts.VQFR.vqfr.utils.options import dict2str, parse_options
 
 

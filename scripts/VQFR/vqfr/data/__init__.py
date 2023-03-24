@@ -24,7 +24,8 @@ dataset_filenames = [
 ]
 # import all the dataset modules
 _dataset_modules = [
-    importlib.import_module(f"scripts.VQFR.vqfr.data.{file_name}") for file_name in dataset_filenames
+    importlib.import_module(f"scripts.VQFR.vqfr.data.{file_name}")
+    for file_name in dataset_filenames
 ]
 
 
