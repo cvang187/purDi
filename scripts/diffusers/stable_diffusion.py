@@ -8,7 +8,12 @@ import transformers
 from PIL import Image
 from PySide6.QtCore import Signal, QObject
 from controlnet_aux import OpenposeDetector, HEDdetector, MLSDdetector
+from diffusers import DDIMScheduler, DiffusionPipeline, SchedulerMixin, StableDiffusionAttendAndExcitePipeline, \
+    StableDiffusionPanoramaPipeline, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, \
+    StableDiffusionInpaintPipeline, StableDiffusionInstructPix2PixPipeline, StableDiffusionImageVariationPipeline, \
+    CycleDiffusionPipeline, StableDiffusionSAGPipeline, StableDiffusionPix2PixZeroPipeline
 from torchvision.transforms import transforms
+from typing import Union
 
 
 class StableDiffusion(QObject):
@@ -17,27 +22,35 @@ class StableDiffusion(QObject):
 
     def __init__(self, parent=None):
         super().__init__()
-        self.results = []
         self.parent = parent
-
-        self._base_dir = os.path.abspath("models")
-        self.upscaler_dir = os.path.join(self._base_dir, "upscalers")
-        self.output_dir = os.path.abspath("output")
-
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.output_type = (
-            "latent" if self.parent.ui.latent_upscale_2x.isChecked() else "pil"
-        )
-        self.callback_step = 1
-
-        torch.backends.cudnn.benchmark = (
-            True if self.parent.ui.cudnn_checkbox.isChecked() else False
+        self._model_dir = os.path.abspath("models")
+        self._device = "cuda" if torch.cuda.is_available() else "cpu"
+        self._output_type = (
+            "latent" if self.parent.ui.latent_upscale_checkbox.isChecked() else "pil"
         )
         torch.backends.cuda.matmul.allow_tf32 = (
             True if self.parent.ui.tf32_item_checkbox.isChecked() else False
         )
+        self.results = []
+        self._callback_step = 1
 
-    def _controlnet(self, user_params, callback, network, processed_img, img_map_suffix=""):
+    @property
+    def output_type(self):
+        return self._output_type
+
+    @property
+    def device(self):
+        return self._device
+
+    def _controlnet(
+        self,
+        user_params: tuple,
+        callback,
+        network,
+        processed_img,
+        file_name: str,
+        img_map_suffix="",
+    ):
         """
         Controlnet
         """
@@ -63,13 +76,12 @@ class StableDiffusion(QObject):
             model_id,
             controlnet=network,
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
         self.sliced_vae_check(pipe)
-        self.xformer_check(pipe)
         self.nsfw_check(pipe)
 
         for img in i2i_list:
@@ -78,11 +90,11 @@ class StableDiffusion(QObject):
 
             # saves image to be processed
             if self.parent.ui.save_controlnet_input_maps_checkbox.isChecked():
-                name = f"CN_{pos_prompt[:60]}"
+                # name = f"CN_{pos_prompt[:60]}"
                 self.parent.save_images(
                     image=[input_img],
                     seed=0,
-                    name=name,
+                    name=file_name,
                     suffix=img_map_suffix,
                 )
 
@@ -104,7 +116,7 @@ class StableDiffusion(QObject):
                     guidance_scale=cfg,
                     output_type=self.output_type,
                     callback=callback,
-                    callback_steps=self.callback_step,
+                    callback_steps=self._callback_step,
                     controlnet_conditioning_scale=1.0,
                 ).images[0]
                 self.results.append([image, seed[1]])
@@ -112,11 +124,11 @@ class StableDiffusion(QObject):
         self.img_finished.emit()
         return self.results
 
-    def controlnet_canny(self, user_param, callback):
+    def controlnet_canny(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "lllyasviel/sd-controlnet-canny",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -143,14 +155,15 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__image_prep,
+            file_name=img_file_name,
             img_map_suffix="_canny",
         )
 
-    def controlnet_openpose(self, user_param, callback):
+    def controlnet_openpose(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-openpose",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __image_prep(img):
@@ -163,14 +176,15 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__image_prep,
+            file_name=img_file_name,
             img_map_suffix="_openpose",
         )
 
-    def controlnet_depth(self, user_param, callback):
+    def controlnet_depth(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-depth",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -187,14 +201,15 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__img_prep,
+            file_name=img_file_name,
             img_map_suffix="_depth",
         )
 
-    def controlnet_hed(self, user_param, callback):
+    def controlnet_hed(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-hed",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -207,14 +222,15 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__img_prep,
+            file_name=img_file_name,
             img_map_suffix="hed",
         )
 
-    def controlnet_mlsd(self, user_param, callback):
+    def controlnet_mlsd(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-mlsd",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -227,14 +243,15 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__img_prep,
+            file_name=img_file_name,
             img_map_suffix="mlsd",
         )
 
-    def controlnet_scribble(self, user_param, callback):
+    def controlnet_scribble(self, user_param: tuple, callback, img_file_name):
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-scribble",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -247,16 +264,17 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__img_prep,
+            file_name=img_file_name,
             img_map_suffix="scribble",
         )
 
-    def controlnet_seg(self, user_param, callback):
+    def controlnet_seg(self, user_param: tuple, callback, img_file_name):
         from scripts.diffusers.controlnet_utils import ade_palette
 
         network_model = diffusers.ControlNetModel.from_pretrained(
             "fusing/stable-diffusion-v1-5-controlnet-seg",
             torch_dtype=torch.float16,
-            cache_dir=f"{self._base_dir}/controlnet",
+            cache_dir=f"{self._model_dir}/controlnet",
         )
 
         def __img_prep(img):
@@ -292,6 +310,7 @@ class StableDiffusion(QObject):
             callback=callback,
             network=network_model,
             processed_img=__img_prep,
+            file_name=img_file_name,
             img_map_suffix="seg",
         )
 
@@ -346,15 +365,15 @@ class StableDiffusion(QObject):
 
     def pix2pix_zero_image(
         self,
-        width,
-        height,
-        n_image,
-        n_batch,
-        n_steps,
-        cfg,
-        i2i_list,
-        pipe,
-        live_preview
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        pipe: type[DiffusionPipeline] = StableDiffusionPix2PixZeroPipeline,
+        live_preview=None,
     ):
         """
         Semi-working pix2pix
@@ -437,7 +456,7 @@ class StableDiffusion(QObject):
                     latents=inverted_latent,
                     output_type=self.output_type,
                     callback=live_preview,
-                    callback_steps=self.callback_step,
+                    callback_steps=self._callback_step,
                 ).images[0]
                 self.results.append([image, seed[1]])
 
@@ -446,17 +465,17 @@ class StableDiffusion(QObject):
 
     def self_attention_guidance(
         self,
-        positive,
-        negative,
-        width,
-        height,
-        n_image,
-        n_batch,
-        n_steps,
-        scheduler,
-        cfg,
-        pipe,
-        live_preview
+        pos_prompt: str,
+        neg_orompt: str,
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        pipe: type[DiffusionPipeline] = StableDiffusionSAGPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion - Self-Attention Guidance
@@ -476,8 +495,8 @@ class StableDiffusion(QObject):
 
             with torch.inference_mode():
                 image = pipe(
-                    prompt=positive,
-                    negative_prompt=negative,
+                    prompt=pos_prompt,
+                    negative_prompt=neg_orompt,
                     width=width,
                     height=height,
                     num_images_per_prompt=n_batch,
@@ -488,7 +507,7 @@ class StableDiffusion(QObject):
                     output_type=self.output_type,
                     latents=None,
                     callback=live_preview,
-                    callback_steps=self.callback_step,
+                    callback_steps=self._callback_step,
                 ).images[0]
                 self.results.append([image, seed[1]])
 
@@ -497,16 +516,16 @@ class StableDiffusion(QObject):
 
     def cycle_diffusion(
         self,
-        positive,
-        negative,
-        n_image,
-        n_batch,
-        n_steps,
-        cfg,
-        i2i_list,
-        strength,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        strength: Union[int, float] = 0.75,
+        pipe: type[DiffusionPipeline] = CycleDiffusionPipeline,
+        live_preview=None,
     ):
         """
         Cycle Diffusion - text guided image-to-image variation pipe_line
@@ -527,8 +546,8 @@ class StableDiffusion(QObject):
                 # TODO: Use BLIP to generate source_prompt
                 with torch.inference_mode():
                     image = pipe(
-                        prompt=positive,
-                        source_prompt=negative,
+                        prompt=pos_prompt,
+                        source_prompt=neg_prompt,
                         image=initial_img,
                         num_inference_steps=n_steps,
                         num_images_per_prompt=n_batch,
@@ -538,7 +557,7 @@ class StableDiffusion(QObject):
                         source_guidance_scale=1,
                         output_type=self.output_type,
                         callback=live_preview,
-                        callback_steps=self.callback_step,
+                        callback_steps=self._callback_step,
                     ).images[0]
                 self.results.append([image, seed[1]])
 
@@ -547,16 +566,16 @@ class StableDiffusion(QObject):
 
     def img2img_variation(
         self,
-        width,
-        height,
-        n_image,
-        n_batch,
-        n_steps,
-        scheduler,
-        cfg,
-        i2i_list,
-        pipe,
-        live_preview
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        pipe: type[DiffusionPipeline] = StableDiffusionImageVariationPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion image-to-image variation pipe_line.
@@ -602,7 +621,7 @@ class StableDiffusion(QObject):
                         num_inference_steps=n_steps,
                         output_type=self.output_type,
                         callback=live_preview,
-                        callback_steps=self.callback_step,
+                        callback_steps=self._callback_step,
                     ).images[0]
                     self.results.append([image, seed[1]])
 
@@ -611,18 +630,18 @@ class StableDiffusion(QObject):
 
     def instruct_pix2pix(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        n_image,
-        n_batch,
-        n_steps,
-        cfg,
-        i2i_list,
-        img_guidance,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 29,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        img_guidance: Union[int, float] = 1.5,
+        pipe: type[DiffusionPipeline] = StableDiffusionInstructPix2PixPipeline,
+        live_preview=None
     ):
         """
         InstructPix2Pix human instruction image-to-image variations
@@ -652,7 +671,7 @@ class StableDiffusion(QObject):
                         generator=seed[0],
                         output_type=self.output_type,
                         callback=live_preview,
-                        callback_steps=self.callback_step,
+                        callback_steps=self._callback_step,
                     ).images[0]
                     self.results.append([image, seed[1]])
 
@@ -661,18 +680,18 @@ class StableDiffusion(QObject):
 
     def inpaint(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        n_image,
-        n_batch,
-        n_steps,
-        scheduler,
-        cfg,
-        i2i_list,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        pipe: type[DiffusionPipeline] = StableDiffusionInpaintPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion image-to-image pipe_line. Images are saved in /output.
@@ -690,7 +709,6 @@ class StableDiffusion(QObject):
 
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
-        self.xformer_check(pipe)
         self.nsfw_check(pipe)
 
         for img in i2i_list:
@@ -715,7 +733,7 @@ class StableDiffusion(QObject):
                         generator=seed[0],
                         output_type=self.output_type,
                         callback=live_preview,
-                        callback_steps=self.callback_step,
+                        callback_steps=self._callback_step,
                     ).images[0]
                     self.results.append([image, seed[1]])
 
@@ -724,19 +742,19 @@ class StableDiffusion(QObject):
 
     def img2img(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        n_image,
-        n_batch,
-        n_steps,
-        scheduler,
-        cfg,
-        i2i_list,
-        strength,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        strength: float = 0.75,
+        pipe: type[DiffusionPipeline] = StableDiffusionImg2ImgPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion image-to-image pipe_line. Images are saved in /output.
@@ -748,7 +766,6 @@ class StableDiffusion(QObject):
 
         self.cpu_offload_check(pipe)
         self.attention_slicing_check(pipe)
-        self.xformer_check(pipe)
         self.nsfw_check(pipe)
 
         for img in i2i_list:
@@ -771,7 +788,7 @@ class StableDiffusion(QObject):
                         generator=seed[0],
                         output_type=self.output_type,
                         callback=live_preview,
-                        callback_steps=self.callback_step,
+                        callback_steps=self._callback_step,
                     ).images[0]
                     self.results.append([image, seed[1]])
 
@@ -780,19 +797,19 @@ class StableDiffusion(QObject):
 
     def attend_and_excite(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        width,
-        height,
-        n_image,
-        n_steps,
-        scheduler,
-        cfg,
-        max_alteration,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        max_alteration: int = 20,
+        pipe: type[DiffusionPipeline] = StableDiffusionAttendAndExcitePipeline,
+        live_preview=None,
     ):
         """
         Attend & Excite, prompt emphasis for Stable Diffusion. Any word wrapped with
@@ -838,7 +855,7 @@ class StableDiffusion(QObject):
                 max_iter_to_alter=max_alteration,
                 output_type=self.output_type,
                 callback=live_preview,
-                callback_steps=self.callback_step,
+                callback_steps=self._callback_step,
             ).images[0]
             self.results.append([image, seed[1]])
 
@@ -847,24 +864,28 @@ class StableDiffusion(QObject):
 
     def multi_diffusion_panorama(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        width,
-        height,
-        n_image,
-        n_batch,
-        n_steps,
-        cfg,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        cfg: Union[int, float] = 6.5,
+        pipe: type[DiffusionPipeline] = StableDiffusionPanoramaPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion Multi-Diffusion Panorama
         """
         self.img_started.emit()
         self.results = []
+
+        pipe.scheduler = DDIMScheduler.from_pretrained(
+            pipe.model_id, subfolder="scheduler"
+        )
 
         self.sequential_cpu_offload_check(pipe)
         self.sliced_vae_check(pipe)
@@ -887,7 +908,7 @@ class StableDiffusion(QObject):
                     guidance_scale=cfg,
                     output_type=self.output_type,
                     callback=live_preview,
-                    callback_steps=self.callback_step,
+                    callback_steps=self._callback_step,
                 ).images[0]
                 self.results.append([image, seed[1]])
         self.img_finished.emit()
@@ -895,19 +916,19 @@ class StableDiffusion(QObject):
 
     def txt2img(
         self,
-        pos_prompt,
-        neg_prompt,
-        pos_emb,
-        neg_emb,
-        width,
-        height,
-        n_image,
-        n_batch,
-        n_steps,
-        scheduler,
-        cfg,
-        pipe,
-        live_preview
+        pos_prompt: str = "",
+        neg_prompt: str = "",
+        pos_emb: torch.Tensor = None,
+        neg_emb: torch.Tensor = None,
+        width: int = 512,
+        height: int = 512,
+        n_image: int = 1,
+        n_batch: int = 1,
+        n_steps: int = 20,
+        scheduler: type[SchedulerMixin] = DDIMScheduler,
+        cfg: Union[int, float] = 6.5,
+        pipe: type[DiffusionPipeline] = StableDiffusionPipeline,
+        live_preview=None,
     ):
         """
         Stable Diffusion text-to-image pipe_line. Images are saved in /output.
@@ -920,7 +941,6 @@ class StableDiffusion(QObject):
         self.cpu_offload_check(pipe)
         self.sliced_vae_check(pipe)
         self.attention_slicing_check(pipe)
-        self.xformer_check(pipe)
         self.nsfw_check(pipe)
 
         for n in range(n_image):
@@ -939,7 +959,7 @@ class StableDiffusion(QObject):
                     generator=seed[0],
                     output_type=self.output_type,
                     callback=live_preview,
-                    callback_steps=self.callback_step,
+                    callback_steps=self._callback_step,
                 ).images[0]
                 self.results.append([image, seed[1]])
 
@@ -1025,7 +1045,7 @@ class StableDiffusion(QObject):
             print((index // rows * width, index % rows * height))
         return grid
 
-    def cpu_offload_check(self, pipe_line):
+    def cpu_offload_check(self, pipe_line: type[DiffusionPipeline]) -> None:
         """
         For additional memory savings, you can offload the weights to CPU and only load
         them to GPU when performing the forward pass.
@@ -1035,9 +1055,9 @@ class StableDiffusion(QObject):
         elif self.parent.ui.sequential_cpu_offload_checkbox.isChecked():
             pipe_line.enable_sequential_cpu_offload()
         else:
-            pipe_line.to("cuda")
+            pipe_line.to(self.device)
 
-    def sequential_cpu_offload_check(self, pipe_line):
+    def sequential_cpu_offload_check(self, pipe_line: type[DiffusionPipeline]) -> None:
         """
         Some pipelines do not support enable_model_cpu_offload so,
         this method will cover those specific pipelines
@@ -1048,9 +1068,9 @@ class StableDiffusion(QObject):
         ):
             pipe_line.enable_sequential_cpu_offload()
         else:
-            pipe_line.to("cuda")
+            pipe_line.to(self.device)
 
-    def sliced_vae_check(self, pipe_line):
+    def sliced_vae_check(self, pipe_line: type[DiffusionPipeline]) -> None:
         """
         To decode large batches of images with limited V-RAM, or to enable batches with
         32 images or more, you can use sliced VAE decode that decodes the batch latents
@@ -1064,7 +1084,7 @@ class StableDiffusion(QObject):
         else:
             pipe_line.disable_vae_slicing()
 
-    def attention_slicing_check(self, pipe_line):
+    def attention_slicing_check(self, pipe_line: type[DiffusionPipeline]) -> None:
         """
         For even additional memory savings, you can use a sliced version of attention
         that performs the computation in steps instead of all at once.
@@ -1073,33 +1093,3 @@ class StableDiffusion(QObject):
             pipe_line.enable_attention_slicing()
         else:
             pipe_line.disable_attention_slicing()
-
-    def xformer_check(self, pipe_line):
-        """
-        Conditional checks to enable memory efficient attention or if able,
-        xformers memory efficient attention
-        """
-        # if "2.1.0" not in torch.version.__version__:
-        #     try:
-        #         import xformers
-        #         from xformers.ops import MemoryEfficientAttentionFlashAttentionOp
-        #     except ModuleNotFoundError:
-        #         print("xformers library not found. Please try installing xformers again")
-        #     else:
-        #         if self.parent.ui.memory_efficient_attention_checkbox.isChecked():
-        #             pipe_line.enable_xformers_memory_efficient_attention(
-        #                 attention_op=MemoryEfficientAttentionFlashAttentionOp
-        #             )
-        #             pipe_line.vae.enable_xformers_memory_efficient_attention(
-        #                 attention_op=None
-        #             )
-        #             print("xFormers Memory Efficient Attention")
-        #         elif (
-        #                 self.parent.ui.memory_efficient_attention_checkbox.isChecked()
-        #                 and self.parent.ui.attention_slicing_checkbox.isChecked()
-        #         ):
-        #             pipe_line.enable_xformers_memory_efficient_attention()
-        #             print("Memory Efficient Attention")
-        #         else:
-        #             pipe_line.disable_xformers_memory_efficient_attention()
-        pass

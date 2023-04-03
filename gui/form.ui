@@ -1253,7 +1253,7 @@
               <enum>QTabWidget::South</enum>
              </property>
              <property name="currentIndex">
-              <number>0</number>
+              <number>2</number>
              </property>
              <property name="elideMode">
               <enum>Qt::ElideLeft</enum>
@@ -1408,7 +1408,7 @@
                        <string/>
                       </property>
                       <property name="text">
-                       <string>512</string>
+                       <string>768</string>
                       </property>
                       <property name="maxLength">
                        <number>32767</number>
@@ -1478,7 +1478,7 @@
                        <set>Qt::ImhDigitsOnly</set>
                       </property>
                       <property name="text">
-                       <string>512</string>
+                       <string>768</string>
                       </property>
                       <property name="placeholderText">
                        <string>768</string>
@@ -1722,7 +1722,7 @@
                   <item>
                    <widget class="QToolBox" name="toolBox">
                     <property name="currentIndex">
-                     <number>2</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="page_5">
                      <property name="geometry">
@@ -2170,15 +2170,15 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>6</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="page">
                      <property name="geometry">
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>170</width>
-                       <height>95</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2268,7 +2268,7 @@
                          <string>Enable</string>
                         </property>
                         <property name="checked">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -2279,8 +2279,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>185</width>
+                       <height>250</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2452,8 +2452,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>95</width>
+                       <height>426</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2576,8 +2576,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>93</width>
+                       <height>298</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2640,8 +2640,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>86</width>
+                       <height>59</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2799,8 +2799,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>100</width>
+                       <height>346</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2924,15 +2924,15 @@
                   <item>
                    <widget class="QToolBox" name="optimization_toolbox">
                     <property name="currentIndex">
-                     <number>3</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="attention_slicing_item">
                      <property name="geometry">
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>131</width>
-                       <height>398</height>
+                       <width>360</width>
+                       <height>313</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2961,7 +2961,7 @@
                          <string>Attention Slicing</string>
                         </property>
                         <property name="checked">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -2972,8 +2972,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>167</width>
-                       <height>387</height>
+                       <width>360</width>
+                       <height>307</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3005,7 +3005,7 @@
                          <string>Model CPU Offload</string>
                         </property>
                         <property name="checked">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -3048,7 +3048,7 @@
                          <string>Disable</string>
                         </property>
                         <property name="checked">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -3064,138 +3064,6 @@
                          </size>
                         </property>
                        </spacer>
-                      </item>
-                     </layout>
-                    </widget>
-                    <widget class="QWidget" name="cudnn_item">
-                     <property name="geometry">
-                      <rect>
-                       <x>0</x>
-                       <y>0</y>
-                       <width>86</width>
-                       <height>350</height>
-                      </rect>
-                     </property>
-                     <attribute name="label">
-                      <string>cuDNN Auto-Tuner</string>
-                     </attribute>
-                     <layout class="QVBoxLayout" name="verticalLayout_21">
-                      <item>
-                       <widget class="QLabel" name="label_3">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>NVIDIA cuDNN supports many algorithms to compute a convolution. Autotuner runs a short benchmark and selects the kernel with the best performance on a given hardware for a given input size.</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QCheckBox" name="cudnn_checkbox">
-                        <property name="text">
-                         <string>cuDNN</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                    <widget class="QWidget" name="half_precision_item">
-                     <property name="geometry">
-                      <rect>
-                       <x>0</x>
-                       <y>0</y>
-                       <width>360</width>
-                       <height>223</height>
-                      </rect>
-                     </property>
-                     <attribute name="label">
-                      <string>Half Precision</string>
-                     </attribute>
-                     <layout class="QVBoxLayout" name="verticalLayout_26">
-                      <item>
-                       <widget class="QLabel" name="label_4">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>To save more GPU memory and get more speed, you can load and run the model weights directly in half precision. This involves loading the float16 version of the weights, which was saved to a branch named fp16, and telling PyTorch to use the float16 type when loading them:</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QCheckBox" name="half_precision_checkbox">
-                        <property name="text">
-                         <string>half-precision</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                    <widget class="QWidget" name="memory_efficient_item">
-                     <property name="geometry">
-                      <rect>
-                       <x>0</x>
-                       <y>0</y>
-                       <width>187</width>
-                       <height>126</height>
-                      </rect>
-                     </property>
-                     <attribute name="label">
-                      <string>Memory Efficient Attention - Xformer</string>
-                     </attribute>
-                     <layout class="QVBoxLayout" name="verticalLayout_23">
-                      <item>
-                       <widget class="QLabel" name="label_5">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Optimizes the bandwidth in the attention block for speed boost and memory efficiency. Requires PyTorch &gt; 1.12, CUDA available, and xFormers</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QCheckBox" name="memory_efficient_attention_checkbox">
-                        <property name="text">
-                         <string>Memory Efficient Attention</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
                       </item>
                      </layout>
                     </widget>
@@ -3248,8 +3116,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>264</width>
-                       <height>206</height>
+                       <width>360</width>
+                       <height>253</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3283,7 +3151,7 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                          <string>Sliced VAE</string>
                         </property>
                         <property name="checked">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -3353,11 +3221,22 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                        </widget>
                       </item>
                       <item>
-                       <widget class="QCheckBox" name="vqfr_checkbox">
-                        <property name="text">
-                         <string>Enable</string>
-                        </property>
-                       </widget>
+                       <layout class="QHBoxLayout" name="horizontalLayout_14">
+                        <item>
+                         <widget class="QCheckBox" name="vqfr_checkbox">
+                          <property name="text">
+                           <string>Enable</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QCheckBox" name="vqfr_2x_bg_upscale_checkbox">
+                          <property name="text">
+                           <string>Up-scale Background</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
                       </item>
                      </layout>
                     </widget>
@@ -3373,6 +3252,15 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                      <attribute name="label">
                       <string>CodeFormer</string>
                      </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_21">
+                      <item>
+                       <widget class="QCheckBox" name="codeformer_checkbox">
+                        <property name="text">
+                         <string>CheckBox</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </widget>
                   </item>
@@ -3386,13 +3274,13 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_22">
                      <property name="leftMargin">
-                      <number>10</number>
+                      <number>0</number>
                      </property>
                      <property name="topMargin">
                       <number>0</number>
                      </property>
                      <property name="rightMargin">
-                      <number>10</number>
+                      <number>0</number>
                      </property>
                      <property name="bottomMargin">
                       <number>0</number>
@@ -3413,7 +3301,7 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                         </widget>
                        </item>
                        <item>
-                        <widget class="QCheckBox" name="latent_upscale_2x">
+                        <widget class="QCheckBox" name="latent_upscale_checkbox">
                          <property name="text">
                           <string>2x Latent</string>
                          </property>
