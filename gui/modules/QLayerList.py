@@ -19,7 +19,7 @@ class QLayerList(QtWidgets.QDockWidget):
 
     def get_total_layers(self):
         if getattr(self.parent, "image_viewer", None):
-            layer_history_map = self.parent.image_viewer.layer_history
+            layer_history_map = self.parent.view.layer_history
             return len(layer_history_map.keys())
         else:
             return 0
@@ -31,14 +31,14 @@ class QLayerList(QtWidgets.QDockWidget):
 
         selected_layer_index = button.objectName().split("Layer ")[-1]
         selected_layer_index = int(selected_layer_index)
-        self.parent.image_viewer.current_layer = selected_layer_index
+        self.parent.view.current_layer = selected_layer_index
         for lb in self.layerButtons:
             if lb.objectName() == button.objectName():
                 lb.setChecked(True)
                 lb.setStyleSheet("background-color: rgb(22, 22, 22);")
                 self.currentButton = lb
-                pixmap = self.parent.image_viewer.get_current_layer_latest_pixmap()
-                self.parent.image_viewer.show_image(pixmap, False)
+                pixmap = self.parent.view.get_current_layer_latest_pixmap()
+                self.parent.view.show_image(pixmap, False)
             else:
                 lb.setChecked(False)
                 lb.setIconSize(QtCore.QSize(50, 50))
@@ -59,12 +59,12 @@ class QLayerList(QtWidgets.QDockWidget):
     #     self.setWidget(self.scroll)
 
     def on_layer_duplicate(self):
-        self.parent.image_viewer.duplicate_current_layer()
+        self.parent.view.duplicate_current_layer()
         self.currentButton.setChecked(False)
         self.currentButton.setIconSize(QtCore.QSize(50, 50))
         self.currentButton.setStyleSheet("background-color: rgb(44, 44, 44);")
 
-        self.current_layer = self.parent.image_viewer.current_layer
+        self.current_layer = self.parent.view.current_layer
         pixmap = self.parent.get_current_layer_latest_pixmap()
 
         button = QtWidgets.QToolButton(self)
@@ -98,7 +98,7 @@ class QLayerList(QtWidgets.QDockWidget):
             layer_index = object_name.split("Layer ")[-1]
             layer_index = int(layer_index)
 
-            if self.parent.image_viewer.current_layer == layer_index:
+            if self.parent.view.current_layer == layer_index:
                 # Current layer matches
                 # Switch to a different layer first
                 layer_list = list(reversed(self.layerButtons))
@@ -127,14 +127,14 @@ class QLayerList(QtWidgets.QDockWidget):
                                 self.currentButton.setStyleSheet(
                                     "background-color: rgb(22, 22, 22);"
                                 )
-                                self.parent.image_viewer.current_layer = (
+                                self.parent.view.current_layer = (
                                     next_layer_index
                                 )
                                 pixmap = (
-                                    self.parent.image_viewer.get_current_layer_latest_pixmap()
+                                    self.parent.view.get_current_layer_latest_pixmap()
                                 )
-                                self.parent.image_viewer.show_image(pixmap, False)
-                                del self.parent.image_viewer.layer_history[layer_index]
+                                self.parent.view.show_image(pixmap, False)
+                                del self.parent.view.layer_history[layer_index]
                     else:
                         new_layer_buttons.append(l)
 
@@ -153,7 +153,7 @@ class QLayerList(QtWidgets.QDockWidget):
 
     def init(self):
         self.num_layers = self.get_total_layers()
-        self.current_layer = self.parent.image_viewer.current_layer
+        self.current_layer = self.parent.view.current_layer
         pixmap = self.parent.get_current_layer_latest_pixmap()
 
         if not self.currentButton:

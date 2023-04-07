@@ -72,19 +72,19 @@ class PurDiToolBoxWidget(QDockWidget):
 
     def on_rotate_left_tool_button(self):
         # pixmap = self.get_current_layer_latest_pixmap()
-        pixmap = self.parent.image_viewer.scene.selectedItems()
+        pixmap = self.parent.view.scene.selectedItems()
         pil = util.q_pixmap_to_image(pixmap)
         pil = pil.rotate(90, expand=True)
         updated_pixmap = util.image_to_qt_pixmap(pil)
-        self.parent.image_viewer.show_image(updated_pixmap)
+        self.parent.view.show_image(updated_pixmap)
 
     def on_rotate_right_tool_button(self):
         # pixmap = self.get_current_layer_latest_pixmap()
-        pixmap = self.parent.image_viewer.scene.selectedItems()
+        pixmap = self.parent.view.scene.selectedItems()
         pil = util.q_pixmap_to_image(pixmap)
         pil = pil.rotate(-90, expand=True)
         updated_pixmap = util.image_to_qt_pixmap(pil)
-        self.parent.image_viewer.show_image(updated_pixmap)
+        self.parent.view.show_image(updated_pixmap)
 
     def on_horizontal_flip_tool_button(self, checked):
         if checked:
@@ -92,7 +92,7 @@ class PurDiToolBoxWidget(QDockWidget):
             pil = util.q_pixmap_to_image(pixmap)
             pil = pil.transpose(Image.FLIP_LEFT_RIGHT)
             updated_pixmap = util.image_to_qt_pixmap(pil)
-            self.parent.image_viewer.show_image(
+            self.parent.view.show_image(
                 updated_pixmap, True, "Flip Left-Right", "Tool", None, None
             )
         self.pa.horizontal_flip_img_btn.setChecked(False)
@@ -103,7 +103,7 @@ class PurDiToolBoxWidget(QDockWidget):
             pil = util.q_pixmap_to_image(pixmap)
             pil = pil.transpose(Image.FLIP_TOP_BOTTOM)
             updated_pixmap = util.image_to_qt_pixmap(pil)
-            self.parent.image_viewer.show_image(
+            self.parent.view.show_image(
                 updated_pixmap, True, "Flip Top-Bottom", "Tool", None, None
             )
         self.pa.vertical_flip_img_btn.setChecked(False)
@@ -126,7 +126,7 @@ class PurDiToolBoxWidget(QDockWidget):
             painter.drawPixmap(QtCore.QPoint(), background_removed)
             painter.end()
 
-            self.parent.image_viewer.show_image(updated_pixmap)
+            self.parent.view.show_image(updated_pixmap)
 
         self.pa.blur_background_btn.setChecked(False)
         del tool
@@ -148,7 +148,7 @@ class PurDiToolBoxWidget(QDockWidget):
         if output is not None:
             # Save new pixmap
             updated_pixmap = util.image_to_qt_pixmap(output)
-            self.parent.image_viewer.show_image(
+            self.parent.view.show_image(
                 updated_pixmap, True, "Background Removal"
             )
 
@@ -192,7 +192,7 @@ class PurDiToolBoxWidget(QDockWidget):
             painter.drawPixmap(QtCore.QPoint(), foreground_pixmap)
             painter.end()
 
-            self.parent.image_viewer.show_image(background_pixmap)
+            self.parent.view.show_image(background_pixmap)
 
         # TODO: Fix grayscale tool button
         # self.GrayscaleBackgroundToolButton.setChecked(False)
@@ -235,7 +235,7 @@ class PurDiToolBoxWidget(QDockWidget):
 
                 colorizer_widget = IColoriTUI(
                     None,
-                    viewer=self.parent.image_viewer,
+                    viewer=self.parent.view,
                     alphaChannel=a,
                     color_model=output,
                     im_bgr=np.dstack((b, g, r)),
@@ -317,7 +317,7 @@ class PurDiToolBoxWidget(QDockWidget):
         if output is not None:
             # Save new pixmap
             updated_pixmap = util.image_to_qt_pixmap(output)
-            self.parent.image_viewer.show_image(updated_pixmap, True, "Anime GAN v2")
+            self.parent.view.show_image(updated_pixmap, True, "Anime GAN v2")
 
         # TODO: add animeGAN button to purDi_Actions.py
         # self.AnimeGanV2ToolButton.setChecked(False)
@@ -360,7 +360,7 @@ class PurDiToolBoxWidget(QDockWidget):
 
     def on_panorama_tool_button(self, checked):
         if checked:
-            if self.parent.image_viewer.current_filename:
+            if self.parent.view.current_filename:
                 pixmap = self.get_current_layer_latest_pixmap()
                 first = util.q_pixmap_to_image(pixmap)
 
@@ -400,7 +400,7 @@ class PurDiToolBoxWidget(QDockWidget):
 
                             # Save result
                             updated_pixmap = util.image_to_qt_pixmap(dst)
-                            self.parent.image_viewer.show_image(
+                            self.parent.view.show_image(
                                 updated_pixmap,
                                 True,
                                 "Landscape Panorama",

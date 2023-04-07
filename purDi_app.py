@@ -69,9 +69,9 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.setupUi(self)
 
         self.threadpool = QThreadPool(self)
-        self.image_viewer = PurDiCanvasView(self)
-        # self.toolbox_dock_widget = PurDiToolBoxWidget(self)
+        self.view = PurDiCanvasView(self)
         self.pa = PurDiActions()
+        # self.toolbox_dock_widget = PurDiToolBoxWidget(self)
 
         self.file_menu = QMenu()
         self.edit_menu = QMenu("Edit")
@@ -111,7 +111,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.random_seed.clicked.connect(self.get_random_seed)
 
         # resizes image_viewer on window/widget move/updates
-        self.image_viewer.scene.items_moved.connect(self.items_moved)
+        self.view.scene.items_moved.connect(self.items_moved)
 
         # UI Theme
         self.ui.edit_theme_button.clicked.connect(lambda: self.show_dock_theme(self))
@@ -125,7 +125,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.image_browser.cache_updated.connect(
             self.ui.image_browser.append_items_to_view
         )
-        self.image_viewer.image_processed.connect(self.ui.image_browser.generate_cache)
+        self.view.image_processed.connect(self.ui.image_browser.generate_cache)
 
         self.full_screen = False
         # self.m_widgets = {}
@@ -149,7 +149,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.generate_img_progress.setVisible(False)
 
         self.ui.image_browser.generate_cache()
-        self.image_viewer.scene.delete_latents_from_scene()
+        self.view.scene.delete_latents_from_scene()
 
     def add_models_to_top_right_window(self) -> None:
         """
@@ -319,7 +319,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
     @Slot()
     def update_window_on_ui_changes(self) -> None:
-        self.image_viewer.resize(self.centralWidget().size())
+        self.view.resize(self.centralWidget().size())
         # self.align_widget_to_canvas()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
@@ -437,8 +437,8 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.attend_excite_pixmap.setPixmap(attend_excite_pixmap)
         multi_diffusion_pixmap = QPixmap("gui/images/txt2img/multi_diffusion.png")
         self.ui.multi_diffusion_pixmap.setPixmap(multi_diffusion_pixmap)
-        vqfr_comparison_pixmap = QPixmap("gui/images/vqfr/comparison-small.jpg")
-        self.ui.vqfr_pixmap.setPixmap(vqfr_comparison_pixmap)
+        # vqfr_comparison_pixmap = QPixmap("gui/images/vqfr/comparison-small.jpg")
+        # self.ui.vqfr_pixmap.setPixmap(vqfr_comparison_pixmap)
         cycle_diffusion_pixmap = QPixmap("gui/images/img2img/cycle_diffusion.png")
         self.ui.cycle_diffusion_pixmap.setPixmap(cycle_diffusion_pixmap)
         image_variation_pixmap = QPixmap("gui/images/img2img/image-variations.jpg")
@@ -457,8 +457,8 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.file_menu.addAction(self.ui.actionSave)
         self.file_menu.addAction(self.ui.actionSettings)
 
-        self.image_viewer.setStyleSheet("border-color: rgba(0, 0, 0, 0);")
-        self.image_viewer.setParent(self.centralWidget())
+        self.view.setStyleSheet("border-color: rgba(0, 0, 0, 0);")
+        self.view.setParent(self.centralWidget())
 
         file_menu_btn = self.pa.create_toolbox_buttons(
             icon_path="gui/icons/feather/align-justify.svg",
@@ -485,10 +485,10 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.toolbar_left.setFixedWidth(60)
 
         self.edit_menu.addAction(
-            self.undo_menu.createUndoAction(self.image_viewer.scene)
+            self.undo_menu.createUndoAction(self.view.scene)
         )
         self.edit_menu.addAction(
-            self.undo_menu.createRedoAction(self.image_viewer.scene)
+            self.undo_menu.createRedoAction(self.view.scene)
         )
 
         # self.toolbox_dock_widget.setParent(self.centralWidget())
@@ -657,7 +657,7 @@ class StableDiffusionRunnable(QRunnable):
                 img_uri = self.get_image_path(seed=seed, name=image_name, suffix="VQFR")
 
             image.save(f"{img_uri}.png")
-            self.parent.image_viewer.scene.show_image(image)
+            self.parent.view.scene.show_image(image)
 
         self.restore_face = False
         self.up_scaling_latent = False
@@ -677,12 +677,12 @@ class StableDiffusionRunnable(QRunnable):
             img = self.pipe.decode_latents(latents)
             img = img.squeeze()
             self.parent.ui.generate_img_progress.setValue(t)
-            self.parent.image_viewer.scene.show_image(img, is_latent=True)
+            self.parent.view.scene.show_image(img, is_latent=True)
             _ = i
 
         if (
             self.parent.ui.img2img_select_box.count() >= 1
-            or len(self.parent.image_viewer.scene.selectedItems()) >= 1
+            or len(self.parent.view.scene.selectedItems()) >= 1
         ):
             if self.parent.ui.controlnet_checkbox.isChecked():
                 controlnet_current_selection = (
@@ -1055,8 +1055,8 @@ class StableDiffusionRunnable(QRunnable):
         )
 
         # images selected in QGraphicsScene
-        if len(self.parent.image_viewer.scene.selectedItems()) >= 1:
-            for item in self.parent.image_viewer.scene.selectedItems():
+        if len(self.parent.view.scene.selectedItems()) >= 1:
+            for item in self.parent.view.scene.selectedItems():
                 img = Image.fromqpixmap(item.pixmap())
                 self.i2i_list.append(img)
 

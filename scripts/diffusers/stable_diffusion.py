@@ -371,7 +371,7 @@ class StableDiffusion(QObject):
         n_batch: int = 1,
         n_steps: int = 20,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         pipe: type[DiffusionPipeline] = StableDiffusionPix2PixZeroPipeline,
         live_preview=None,
     ):
@@ -522,7 +522,7 @@ class StableDiffusion(QObject):
         n_batch: int = 1,
         n_steps: int = 20,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         strength: Union[int, float] = 0.75,
         pipe: type[DiffusionPipeline] = CycleDiffusionPipeline,
         live_preview=None,
@@ -573,7 +573,7 @@ class StableDiffusion(QObject):
         n_steps: int = 20,
         scheduler: type[SchedulerMixin] = DDIMScheduler,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         pipe: type[DiffusionPipeline] = StableDiffusionImageVariationPipeline,
         live_preview=None,
     ):
@@ -638,7 +638,7 @@ class StableDiffusion(QObject):
         n_batch: int = 1,
         n_steps: int = 29,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         img_guidance: Union[int, float] = 1.5,
         pipe: type[DiffusionPipeline] = StableDiffusionInstructPix2PixPipeline,
         live_preview=None
@@ -689,7 +689,7 @@ class StableDiffusion(QObject):
         n_steps: int = 20,
         scheduler: type[SchedulerMixin] = DDIMScheduler,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         pipe: type[DiffusionPipeline] = StableDiffusionInpaintPipeline,
         live_preview=None,
     ):
@@ -751,7 +751,7 @@ class StableDiffusion(QObject):
         n_steps: int = 20,
         scheduler: type[SchedulerMixin] = DDIMScheduler,
         cfg: Union[int, float] = 6.5,
-        i2i_list: list[Union[Image, np.array, torch.Tensor]] = list[None],
+        i2i_list: list[str] = None,
         strength: float = 0.75,
         pipe: type[DiffusionPipeline] = StableDiffusionImg2ImgPipeline,
         live_preview=None,
