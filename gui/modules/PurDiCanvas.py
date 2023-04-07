@@ -40,7 +40,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.modules.PurDiToolBoxWidget import PurDiToolBoxWidget
-from gui.purDi_Actions import PurDiActions
+from gui.purDi_Actions import PurDiActions, create_actions
 
 
 class UndoRedoItemMoved(QUndoCommand):
@@ -323,37 +323,36 @@ class PurDiCanvasView(QGraphicsView):
         self.setUpdatesEnabled(True)
 
         # context menu
-        self.pa = PurDiActions()
         self.bg_remove_mask_only = True
         self.bg_remove_model = "u2net"
         self.colorizer_icon = os.path.abspath("gui/icons/colorizer.svg")
         self.remove_bg_icon = os.path.abspath("gui/icons/background_removal.svg")
-        self.colorizer_action = self.pa.create_toolbox_actions(
-            self,
+        self.colorizer_action = create_actions(
+            parent=self,
             icon_path=self.colorizer_icon,
             icon_txt="Colorizer",
             icon_tool_tip="Re-color image",
         )
-        self.remove_bg_action = self.pa.create_toolbox_actions(
-            self,
+        self.remove_bg_action = create_actions(
+            parent=self,
             icon_path=self.remove_bg_icon,
             icon_txt="Remove Background",
             icon_tool_tip="A background removal network",
         )
-        self.mask_person_action = self.pa.create_toolbox_actions(
-            self,
+        self.mask_person_action = create_actions(
+            parent=self,
             icon_path=self.remove_bg_icon,
             icon_txt="Mask Person",
             icon_tool_tip="Mask person for inpainting",
         )
-        self.mask_bg_action = self.pa.create_toolbox_actions(
-            self,
+        self.mask_bg_action = create_actions(
+            parent=self,
             icon_path=self.remove_bg_icon,
             icon_txt="Mask Background",
             icon_tool_tip="Mask background for inpainting",
         )
-        self.mask_clothing_action = self.pa.create_toolbox_actions(
-            self,
+        self.mask_clothing_action = create_actions(
+            parent=self,
             icon_path=self.remove_bg_icon,
             icon_txt="Mask Clothing",
             icon_tool_tip="Mask clothing for inpainting",
@@ -540,6 +539,8 @@ class PurDiCanvasView(QGraphicsView):
         Powered by U2Net for image segmentation tasks like background removal
         or clothing extraction/masking for other diffuser pipelines like inpainting
         """
+
+        # TODO: Move into a QRunnable to prevent UI freezes when loading model
         from scripts.rembg.session_factory import new_session
         from scripts.FileUtils import u2net_clothes_split_mask
         from scripts.rembg.bg import remove
@@ -610,6 +611,8 @@ class PurDiCanvasView(QGraphicsView):
         pop-up dock widget and into the main UI. For now, quick and dirty
         implementation.
         """
+
+        # TODO: Move into a QRunnable to prevent UI freezes when loading model
         # TODO: move into purDi_app
         import os
         from timm.models import create_model

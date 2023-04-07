@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QDockWidget, QFileDialog
 
 from gui.modules import util
 from gui.modules.QFlowLayout import QFlowLayout
-from gui.purDi_Actions import PurDiActions
+from gui.purDi_Actions import PurDiActions, add_buttons_to_widget
 
 
 class PurDiToolBoxWidget(QDockWidget):
@@ -50,7 +50,7 @@ class PurDiToolBoxWidget(QDockWidget):
         toolbar_layout = QFlowLayout(toolbar_content)
         toolbar_layout.setSpacing(0)
 
-        self.pa.add_buttons_to_widget(toolbar_layout, self.tools_buttons_list)
+        add_buttons_to_widget(toolbar_layout, self.tools_buttons_list)
 
         self.setWidget(toolbar_content)
         self.setContentsMargins(0, 0, 0, 0)

@@ -546,7 +546,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_5, u"Text-to-Image")
         self.page_2 = QWidget()
         self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 344, 488))
+        self.page_2.setGeometry(QRect(0, 0, 237, 159))
         self.verticalLayout_32 = QVBoxLayout(self.page_2)
         self.verticalLayout_32.setObjectName(u"verticalLayout_32")
         self.attend_excite_pixmap = QLabel(self.page_2)
@@ -588,7 +588,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_2, u"Attend And Excite")
         self.page_3 = QWidget()
         self.page_3.setObjectName(u"page_3")
-        self.page_3.setGeometry(QRect(0, 0, 344, 488))
+        self.page_3.setGeometry(QRect(0, 0, 97, 389))
         self.verticalLayout_33 = QVBoxLayout(self.page_3)
         self.verticalLayout_33.setObjectName(u"verticalLayout_33")
         self.scrollArea = QScrollArea(self.page_3)
@@ -597,7 +597,7 @@ class Ui_BasePurDi(object):
         self.scrollArea.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 324, 375))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 77, 68))
         self.verticalLayout_41 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_41.setObjectName(u"verticalLayout_41")
         self.multi_diffusion_pixmap = QLabel(self.scrollAreaWidgetContents)
@@ -627,7 +627,7 @@ class Ui_BasePurDi(object):
         self.toolBox.addItem(self.page_3, u"MultiDiffusion")
         self.page_4 = QWidget()
         self.page_4.setObjectName(u"page_4")
-        self.page_4.setGeometry(QRect(0, 0, 344, 488))
+        self.page_4.setGeometry(QRect(0, 0, 257, 127))
         self.verticalLayout_34 = QVBoxLayout(self.page_4)
         self.verticalLayout_34.setObjectName(u"verticalLayout_34")
         self.self_attention_guidance = QLabel(self.page_4)
@@ -989,7 +989,7 @@ class Ui_BasePurDi(object):
         self.image_variation_toolbox.addItem(self.page_7, u"In-painting")
         self.instruct_pix2pix_widget = QWidget()
         self.instruct_pix2pix_widget.setObjectName(u"instruct_pix2pix_widget")
-        self.instruct_pix2pix_widget.setGeometry(QRect(0, 0, 360, 399))
+        self.instruct_pix2pix_widget.setGeometry(QRect(0, 0, 136, 294))
         self.verticalLayout_18 = QVBoxLayout(self.instruct_pix2pix_widget)
         self.verticalLayout_18.setObjectName(u"verticalLayout_18")
         self.instruct_pix2pix_pixmap = QLabel(self.instruct_pix2pix_widget)
@@ -1138,7 +1138,7 @@ class Ui_BasePurDi(object):
         self.optimization_toolbox.addItem(self.attention_slicing_item, u"Attention Slicing")
         self.cpu_offload_item = QWidget()
         self.cpu_offload_item.setObjectName(u"cpu_offload_item")
-        self.cpu_offload_item.setGeometry(QRect(0, 0, 360, 307))
+        self.cpu_offload_item.setGeometry(QRect(0, 0, 167, 387))
         self.verticalLayout_25 = QVBoxLayout(self.cpu_offload_item)
         self.verticalLayout_25.setObjectName(u"verticalLayout_25")
         self.label_2 = QLabel(self.cpu_offload_item)
@@ -1211,7 +1211,7 @@ class Ui_BasePurDi(object):
         self.optimization_toolbox.addItem(self.tf32_item, u"TensorFloat32")
         self.sliced_vae_item = QWidget()
         self.sliced_vae_item.setObjectName(u"sliced_vae_item")
-        self.sliced_vae_item.setGeometry(QRect(0, 0, 360, 253))
+        self.sliced_vae_item.setGeometry(QRect(0, 0, 264, 206))
         self.verticalLayout_27 = QVBoxLayout(self.sliced_vae_item)
         self.verticalLayout_27.setObjectName(u"verticalLayout_27")
         self.label_7 = QLabel(self.sliced_vae_item)
@@ -1246,7 +1246,7 @@ class Ui_BasePurDi(object):
         self.toolBox_2.setObjectName(u"toolBox_2")
         self.page_8 = QWidget()
         self.page_8.setObjectName(u"page_8")
-        self.page_8.setGeometry(QRect(0, 0, 360, 322))
+        self.page_8.setGeometry(QRect(0, 0, 360, 297))
         self.verticalLayout_40 = QVBoxLayout(self.page_8)
         self.verticalLayout_40.setObjectName(u"verticalLayout_40")
         self.vqfr_pixmap = QLabel(self.page_8)
@@ -1276,7 +1276,7 @@ class Ui_BasePurDi(object):
         self.toolBox_2.addItem(self.page_8, u"Vector_Quantized Face Restoration")
         self.page_9 = QWidget()
         self.page_9.setObjectName(u"page_9")
-        self.page_9.setGeometry(QRect(0, 0, 360, 322))
+        self.page_9.setGeometry(QRect(0, 0, 92, 35))
         self.verticalLayout_21 = QVBoxLayout(self.page_9)
         self.verticalLayout_21.setObjectName(u"verticalLayout_21")
         self.codeformer_checkbox = QCheckBox(self.page_9)
@@ -1297,9 +1297,15 @@ class Ui_BasePurDi(object):
         self.horizontalLayout_11 = QHBoxLayout()
         self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
         self.horizontalLayout_11.setContentsMargins(-1, 0, -1, -1)
+        self.general_options_disable = QCheckBox(self.inference_general_options)
+        self.general_options_disable.setObjectName(u"general_options_disable")
+        self.general_options_disable.setChecked(True)
+
+        self.horizontalLayout_11.addWidget(self.general_options_disable)
+
         self.prompt_weight_checkbox = QCheckBox(self.inference_general_options)
         self.prompt_weight_checkbox.setObjectName(u"prompt_weight_checkbox")
-        self.prompt_weight_checkbox.setChecked(True)
+        self.prompt_weight_checkbox.setChecked(False)
 
         self.horizontalLayout_11.addWidget(self.prompt_weight_checkbox)
 
@@ -1308,14 +1314,26 @@ class Ui_BasePurDi(object):
 
         self.horizontalLayout_11.addWidget(self.latent_upscale_checkbox)
 
+
+        self.verticalLayout_22.addLayout(self.horizontalLayout_11)
+
+        self.horizontalLayout_15 = QHBoxLayout()
+        self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
+        self.horizontalLayout_15.setContentsMargins(-1, 0, -1, -1)
+        self.live_preview_checkbox = QCheckBox(self.inference_general_options)
+        self.live_preview_checkbox.setObjectName(u"live_preview_checkbox")
+        self.live_preview_checkbox.setChecked(True)
+
+        self.horizontalLayout_15.addWidget(self.live_preview_checkbox)
+
         self.nsfw_checkbox = QCheckBox(self.inference_general_options)
         self.nsfw_checkbox.setObjectName(u"nsfw_checkbox")
         self.nsfw_checkbox.setChecked(True)
 
-        self.horizontalLayout_11.addWidget(self.nsfw_checkbox)
+        self.horizontalLayout_15.addWidget(self.nsfw_checkbox)
 
 
-        self.verticalLayout_22.addLayout(self.horizontalLayout_11)
+        self.verticalLayout_22.addLayout(self.horizontalLayout_15)
 
 
         self.verticalLayout_39.addWidget(self.inference_general_options)
@@ -2077,8 +2095,10 @@ class Ui_BasePurDi(object):
         self.codeformer_checkbox.setText(QCoreApplication.translate("BasePurDi", u"CheckBox", None))
         self.toolBox_2.setItemText(self.toolBox_2.indexOf(self.page_9), QCoreApplication.translate("BasePurDi", u"CodeFormer", None))
         self.inference_general_options.setTitle(QCoreApplication.translate("BasePurDi", u"General Options", None))
+        self.general_options_disable.setText(QCoreApplication.translate("BasePurDi", u"None", None))
         self.prompt_weight_checkbox.setText(QCoreApplication.translate("BasePurDi", u"Prompt Weighting", None))
         self.latent_upscale_checkbox.setText(QCoreApplication.translate("BasePurDi", u"2x Latent", None))
+        self.live_preview_checkbox.setText(QCoreApplication.translate("BasePurDi", u"Live Preview", None))
         self.nsfw_checkbox.setText(QCoreApplication.translate("BasePurDi", u"NSFW", None))
         self.right_dock_inference_tab.setTabText(self.right_dock_inference_tab.indexOf(self.right_dock_inference_general), QCoreApplication.translate("BasePurDi", u"General", None))
         self.right_dock_tab_widget.setTabText(self.right_dock_tab_widget.indexOf(self.right_dock_inference), QCoreApplication.translate("BasePurDi", u"Inference", None))

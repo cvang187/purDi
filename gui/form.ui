@@ -1773,8 +1773,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>237</width>
+                       <height>159</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1848,8 +1848,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>97</width>
+                       <height>389</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -1869,8 +1869,8 @@
                           <rect>
                            <x>0</x>
                            <y>0</y>
-                           <width>324</width>
-                           <height>375</height>
+                           <width>77</width>
+                           <height>68</height>
                           </rect>
                          </property>
                          <layout class="QVBoxLayout" name="verticalLayout_41">
@@ -1921,8 +1921,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>344</width>
-                       <height>488</height>
+                       <width>257</width>
+                       <height>127</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2673,8 +2673,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>136</width>
+                       <height>294</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2972,8 +2972,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>307</height>
+                       <width>167</width>
+                       <height>387</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3116,8 +3116,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>253</height>
+                       <width>264</width>
+                       <height>206</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3194,7 +3194,7 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                        <x>0</x>
                        <y>0</y>
                        <width>360</width>
-                       <height>322</height>
+                       <height>297</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3245,8 +3245,8 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>322</height>
+                       <width>92</width>
+                       <height>35</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -3291,9 +3291,9 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                         <number>0</number>
                        </property>
                        <item>
-                        <widget class="QCheckBox" name="prompt_weight_checkbox">
+                        <widget class="QCheckBox" name="general_options_disable">
                          <property name="text">
-                          <string>Prompt Weighting</string>
+                          <string>None</string>
                          </property>
                          <property name="checked">
                           <bool>true</bool>
@@ -3301,9 +3301,36 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                         </widget>
                        </item>
                        <item>
+                        <widget class="QCheckBox" name="prompt_weight_checkbox">
+                         <property name="text">
+                          <string>Prompt Weighting</string>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <widget class="QCheckBox" name="latent_upscale_checkbox">
                          <property name="text">
                           <string>2x Latent</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_15">
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QCheckBox" name="live_preview_checkbox">
+                         <property name="text">
+                          <string>Live Preview</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>

@@ -26,7 +26,10 @@ class StableDiffusion(QObject):
         self._model_dir = os.path.abspath("models")
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
         self._output_type = (
-            "latent" if self.parent.ui.latent_upscale_checkbox.isChecked() else "pil"
+            "latent"
+            if self.parent.ui.latent_upscale_checkbox.isChecked()
+            or self.parent.ui.live_preview_checkbox.isChecked()
+            else "pil"
         )
         torch.backends.cuda.matmul.allow_tf32 = (
             True if self.parent.ui.tf32_item_checkbox.isChecked() else False
@@ -76,7 +79,7 @@ class StableDiffusion(QObject):
             model_id,
             controlnet=network,
             torch_dtype=torch.float16,
-            cache_dir=f"{self._model_dir}/controlnet",
+            cache_dir=f"{self._model_dir}",
         )
         pipe.scheduler = scheduler.from_config(pipe.scheduler.config)
         self.cpu_offload_check(pipe)
@@ -114,8 +117,10 @@ class StableDiffusion(QObject):
                     num_images_per_prompt=n_batch,
                     generator=seed[0],
                     guidance_scale=cfg,
-                    output_type=self.output_type,
-                    callback=callback,
+                    # output_type=self.output_type,
+                    output_type="pil",
+                    callback=None,
+                    # callback=callback,
                     callback_steps=self._callback_step,
                     controlnet_conditioning_scale=1.0,
                 ).images[0]
@@ -150,7 +155,7 @@ class StableDiffusion(QObject):
             output_img = Image.fromarray(canny_img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -171,7 +176,7 @@ class StableDiffusion(QObject):
             output_img = img_processor(img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -196,7 +201,7 @@ class StableDiffusion(QObject):
             output_img = Image.fromarray(depth_img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -217,7 +222,7 @@ class StableDiffusion(QObject):
             output_img = img_processor(img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -238,7 +243,7 @@ class StableDiffusion(QObject):
             output_img = img_processor(img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -259,7 +264,7 @@ class StableDiffusion(QObject):
             output_img = img_processor(img)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -305,7 +310,7 @@ class StableDiffusion(QObject):
             output_img = Image.fromarray(color_seg)
             return output_img
 
-        self._controlnet(
+        return self._controlnet(
             user_params=user_param,
             callback=callback,
             network=network_model,
@@ -555,7 +560,7 @@ class StableDiffusion(QObject):
                         strength=strength,
                         guidance_scale=cfg,
                         source_guidance_scale=1,
-                        output_type=self.output_type,
+                        output_type="pil",
                         callback=live_preview,
                         callback_steps=self._callback_step,
                     ).images[0]

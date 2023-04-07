@@ -48,7 +48,7 @@ from qt_material import QtStyleTools
 from tqdm import tqdm
 
 from gui.modules.PurDiCanvas import PurDiCanvasView, UndoRedoItemMoved
-from gui.purDi_Actions import PurDiActions
+from gui.purDi_Actions import set_icon_color, create_buttons
 from gui.ui_form import Ui_BasePurDi
 from scripts.VQFR.predict import Predictor
 from scripts.diffusers.stable_diffusion import StableDiffusion
@@ -70,7 +70,6 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
         self.threadpool = QThreadPool(self)
         self.view = PurDiCanvasView(self)
-        self.pa = PurDiActions()
         # self.toolbox_dock_widget = PurDiToolBoxWidget(self)
 
         self.file_menu = QMenu()
@@ -371,61 +370,70 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
     #         widget.move(point)
 
     def add_ui_icons(self):
-        inference_tab_icon = self.pa.set_icon_color(
+        inference_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/aperture.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(0, inference_tab_icon)
-        train_tab_icon = self.pa.set_icon_color(
+
+        train_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/cpu.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(1, train_tab_icon)
-        chat_tab_icon = self.pa.set_icon_color(
+
+        chat_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/message-square.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(2, chat_tab_icon)
-        general_tab_icon = self.pa.set_icon_color(
+
+        general_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/settings.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_tab_widget.setTabIcon(3, general_tab_icon)
-        txt_tab_icon = self.pa.set_icon_color(
+
+        txt_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/align-right.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(0, txt_tab_icon)
-        image_tab_icon = self.pa.set_icon_color(
+
+        image_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/image.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(1, image_tab_icon)
-        inf_general_tab_icon = self.pa.set_icon_color(
+
+        inf_general_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/battery-charging.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.right_dock_inference_tab.setTabIcon(2, inf_general_tab_icon)
-        image_browser_tab_icon = self.pa.set_icon_color(
+
+        image_browser_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/grid.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.left_tab_widget.setTabIcon(0, image_browser_tab_icon)
-        prompt_tab_icon = self.pa.set_icon_color(
+
+        prompt_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/activity.svg",
             replace_color="black",
             new_color="white",
         )
         self.ui.left_tab_widget.setTabIcon(1, prompt_tab_icon)
-        history_tab_icon = self.pa.set_icon_color(
+
+        history_tab_icon = set_icon_color(
             icon_path="gui/icons/feather/list.svg",
             replace_color="black",
             new_color="white",
@@ -460,7 +468,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.view.setStyleSheet("border-color: rgba(0, 0, 0, 0);")
         self.view.setParent(self.centralWidget())
 
-        file_menu_btn = self.pa.create_toolbox_buttons(
+        file_menu_btn = create_buttons(
             icon_path="gui/icons/feather/align-justify.svg",
             icon_txt="",
             icon_tool_tip="",
@@ -535,10 +543,9 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         # optimization tab group widget
         self.ui.optimization_options.setStyleSheet("border-color: rgba(0, 0, 0, 0);")
 
-        self.ui.generate_img_progress.setVisible(False)
-
         self.add_scheduler_to_drop_down_box()
 
+        self.ui.generate_img_progress.setVisible(False)
         self.ui.img2img_container.setVisible(True)
 
         self.cpu_offload_group.addButton(self.ui.model_cpu_offload_checkbox)
@@ -559,6 +566,7 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.sd_inference_type_group.addButton(self.ui.controlnet_checkbox)
 
         # Latent Diffusion 2x upscaler does not support prompt embeddings
+        self.general_inference_options_group.addButton(self.ui.general_options_disable)
         self.general_inference_options_group.addButton(self.ui.prompt_weight_checkbox)
         self.general_inference_options_group.addButton(self.ui.latent_upscale_checkbox)
 
@@ -573,8 +581,10 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
 
 class StableDiffusionRunnable(QRunnable):
     """
-    SD QRunnable used for QThreadpool to manage multi-threading so
-    GUI does not freeze when running inference.
+    SD QRunnable used for QThreadpool to manage multi-threading.
+    Common to prevent PySide main application from "freezing" and
+    unresponsive behaviours when running long tasks such as a call
+    to a diffusers pipeline
     """
 
     def __init__(self, parent=None):
@@ -588,7 +598,9 @@ class StableDiffusionRunnable(QRunnable):
 
         self.restore_face = False
         self.up_scaling_latent = False
-        self.model_id = "stabilityai/stable-diffusion-2-1"
+        # self.model_id = "stabilityai/stable-diffusion-2-1"
+        # self.model_id = "stabilityai/stable-diffusion-2-1-base"
+        self.model_id = "runwayml/stable-diffusion-v1-5"
         self.pipe = StableDiffusionPipeline.from_pretrained(
             self.model_id, torch_dtype=torch.float16, cache_dir=self._model_dir
         )
@@ -611,6 +623,11 @@ class StableDiffusionRunnable(QRunnable):
         # self.pipeline.img_finished.connect(self.parent.re_enable_generate_img_button)
 
     def run(self):
+        """
+        Override run() in QRunnable which is automatically called by QThreadPool
+        when a QRunnable object is moved to a thread - basically run() is where the
+        magic happens
+        """
         self.parent.disable_generate_img_button()
         self.update_user_params()
         pipeline_results = self.get_pipeline_results()
@@ -656,29 +673,31 @@ class StableDiffusionRunnable(QRunnable):
                 image = Image.fromarray(image)
                 img_uri = self.get_image_path(seed=seed, name=image_name, suffix="VQFR")
 
-            image.save(f"{img_uri}.png")
             self.parent.view.scene.show_image(image)
+            image.save(f"{img_uri}.png")
 
         self.restore_face = False
         self.up_scaling_latent = False
         self.parent.re_enable_generate_img_button()
 
+    def live_img_preview(self, i, t, latents):
+        img = self.pipe.decode_latents(latents)
+        img = img.squeeze()
+        self.parent.ui.generate_img_progress.setValue(t)
+        self.parent.view.scene.show_image(img, is_latent=True)
+        _ = i
+
     def get_pipeline_results(self):
         """
-        Flow control for Stable Diffusion inference mode. Prioritize image-to-image methods first
-        then falls back to text-to-image.
+        Flow control for Stable Diffusion inference mode. Prioritize
+        image-to-image methods first then falls back to text-to-image.
         """
 
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
             pipe_line=self.pipe, positive=self.positive, negative=self.negative
         )
 
-        def live_img_preview(i, t, latents):
-            img = self.pipe.decode_latents(latents)
-            img = img.squeeze()
-            self.parent.ui.generate_img_progress.setValue(t)
-            self.parent.view.scene.show_image(img, is_latent=True)
-            _ = i
+        callback_function = self.live_img_preview if self.parent.ui.live_preview_checkbox.isChecked() else None
 
         if (
             self.parent.ui.img2img_select_box.count() >= 1
@@ -712,45 +731,45 @@ class StableDiffusionRunnable(QRunnable):
                 )
 
                 if controlnet_current_selection == canny:
-                    self.pipeline.controlnet_canny(
+                    return self.pipeline.controlnet_canny(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == depth_map:
-                    self.pipeline.controlnet_depth(
+                    return self.pipeline.controlnet_depth(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == hed:
-                    self.pipeline.controlnet_hed(
+                    return self.pipeline.controlnet_hed(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == mlsd:
-                    self.pipeline.controlnet_mlsd(
+                    return self.pipeline.controlnet_mlsd(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == open_pose:
-                    self.pipeline.controlnet_openpose(
+                    return self.pipeline.controlnet_openpose(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == scribble:
-                    self.pipeline.controlnet_scribble(
+                    return self.pipeline.controlnet_scribble(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == seg:
-                    self.pipeline.controlnet_seg(
+                    return self.pipeline.controlnet_seg(
                         user_params,
-                        callback=live_img_preview,
+                        callback=callback_function,
                         img_file_name=self.positive,
                     )
 
@@ -772,9 +791,11 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.cycle_diffusion_checkbox.isChecked():
+                # works with any checkpoint below SD v1.5
+                self.model_id = "runwayml/stable-diffusion-v1-5"
                 self.pipe = CycleDiffusionPipeline.from_pretrained(
                     self.model_id, torch_dtype=torch.float16, cache_dir=self._model_dir
                 )
@@ -789,7 +810,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     strength=self.img2img_strength,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.instruct_pix2pix_checkbox.isChecked():
                 self.model_id = "timbrooks/instruct-pix2pix"
@@ -814,7 +835,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     img_guidance=img_guidance_scale,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.pix2pix_zero_checkbox.isChecked():
                 import transformers
@@ -842,7 +863,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.inpaint_checkbox.isChecked():
                 self.model_id = "stabilityai/stable-diffusion-2-inpainting"
@@ -862,7 +883,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             else:
                 self.pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
@@ -882,7 +903,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     strength=self.img2img_strength,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
         else:
             if self.parent.ui.multidiffusion_panorama_checkbox.isChecked():
@@ -903,7 +924,7 @@ class StableDiffusionRunnable(QRunnable):
                     n_steps=self.n_steps,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.self_attention_guidance_checkbox.isChecked():
                 self.pipe = StableDiffusionSAGPipeline.from_pretrained(
@@ -923,7 +944,7 @@ class StableDiffusionRunnable(QRunnable):
                     scheduler=self.scheduler,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             elif self.parent.ui.attend_excite_checkbox.isChecked():
                 self.model_id = "CompVis/stable-diffusion-v1-4"
@@ -945,7 +966,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     max_alteration=max_alteration,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
             else:
                 return self.pipeline.txt2img(
@@ -961,7 +982,7 @@ class StableDiffusionRunnable(QRunnable):
                     scheduler=self.scheduler,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=live_img_preview,
+                    live_preview=callback_function,
                 )
 
     def get_image_path(self, seed: int, name, suffix="") -> str:
