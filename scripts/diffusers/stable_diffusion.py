@@ -8,10 +8,21 @@ import transformers
 from PIL import Image
 from PySide6.QtCore import Signal, QObject
 from controlnet_aux import OpenposeDetector, HEDdetector, MLSDdetector
-from diffusers import DDIMScheduler, DiffusionPipeline, SchedulerMixin, StableDiffusionAttendAndExcitePipeline, \
-    StableDiffusionPanoramaPipeline, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, \
-    StableDiffusionInpaintPipeline, StableDiffusionInstructPix2PixPipeline, StableDiffusionImageVariationPipeline, \
-    CycleDiffusionPipeline, StableDiffusionSAGPipeline, StableDiffusionPix2PixZeroPipeline
+from diffusers import (
+    DDIMScheduler,
+    DiffusionPipeline,
+    SchedulerMixin,
+    StableDiffusionAttendAndExcitePipeline,
+    StableDiffusionPanoramaPipeline,
+    StableDiffusionPipeline,
+    StableDiffusionImg2ImgPipeline,
+    StableDiffusionInpaintPipeline,
+    StableDiffusionInstructPix2PixPipeline,
+    StableDiffusionImageVariationPipeline,
+    CycleDiffusionPipeline,
+    StableDiffusionSAGPipeline,
+    StableDiffusionPix2PixZeroPipeline,
+)
 from torchvision.transforms import transforms
 from typing import Union
 
@@ -28,7 +39,6 @@ class StableDiffusion(QObject):
         self._output_type = (
             "latent"
             if self.parent.ui.latent_upscale_checkbox.isChecked()
-            or self.parent.ui.live_preview_checkbox.isChecked()
             else "pil"
         )
         torch.backends.cuda.matmul.allow_tf32 = (
@@ -91,21 +101,17 @@ class StableDiffusion(QObject):
             initial_img = self.img2pillow(file=img)
             input_img = processed_img(initial_img)
 
-            # saves image to be processed
+            # saves masks to be processed
             if self.parent.ui.save_controlnet_input_maps_checkbox.isChecked():
-                # name = f"CN_{pos_prompt[:60]}"
-                self.parent.save_images(
-                    image=[input_img],
-                    seed=0,
-                    name=file_name,
-                    suffix=img_map_suffix,
-                )
+                output_dir = os.path.abspath("output")
+                name = f"CN_{file_name[:60]}"
+                input_img.save(os.path.join(output_dir, f"{name}_{img_map_suffix}.png"))
 
             for n in range(n_image):
-                seed = self.random_or_manual_seed("cpu")
+                seed = self.random_or_manual_seed(self.device)
 
                 # TODO: replace width/height with conditionals
-                image = pipe(
+                output_images = pipe(
                     prompt=pos_prompt,
                     negative_prompt=neg_prompt,
                     prompt_embeds=pos_emb,
@@ -117,14 +123,13 @@ class StableDiffusion(QObject):
                     num_images_per_prompt=n_batch,
                     generator=seed[0],
                     guidance_scale=cfg,
-                    # output_type=self.output_type,
-                    output_type="pil",
-                    callback=None,
-                    # callback=callback,
+                    output_type=self.output_type,
+                    callback=callback,
                     callback_steps=self._callback_step,
                     controlnet_conditioning_scale=1.0,
-                ).images[0]
-                self.results.append([image, seed[1]])
+                ).images
+
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -446,7 +451,7 @@ class StableDiffusion(QObject):
 
             for n in range(n_image):
                 seed = self.random_or_manual_seed("cpu")
-                image = pipe(
+                output_images = pipe(
                     prompt=caption,
                     negative_prompt=caption,
                     source_embeds=source_embeddings,
@@ -462,8 +467,9 @@ class StableDiffusion(QObject):
                     output_type=self.output_type,
                     callback=live_preview,
                     callback_steps=self._callback_step,
-                ).images[0]
-                self.results.append([image, seed[1]])
+                ).images
+                
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -499,7 +505,7 @@ class StableDiffusion(QObject):
             seed = self.random_or_manual_seed(self.device)
 
             with torch.inference_mode():
-                image = pipe(
+                output_images = pipe(
                     prompt=pos_prompt,
                     negative_prompt=neg_orompt,
                     width=width,
@@ -513,8 +519,9 @@ class StableDiffusion(QObject):
                     latents=None,
                     callback=live_preview,
                     callback_steps=self._callback_step,
-                ).images[0]
-                self.results.append([image, seed[1]])
+                ).images
+                
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -533,7 +540,8 @@ class StableDiffusion(QObject):
         live_preview=None,
     ):
         """
-        Cycle Diffusion - text guided image-to-image variation pipe_line
+        Cycle Diffusion - text guided image-to-image variation pipe_line.
+        Works with v1 SD checkpoints and best with square images
         """
         self.img_started.emit()
         self.results = []
@@ -543,14 +551,14 @@ class StableDiffusion(QObject):
         self.nsfw_check(pipe)
 
         for img in i2i_list:
-            initial_img = self.img2pillow(file=img)
+            initial_img = self.img2pillow(file=img).resize((512, 512))
 
             for n in range(n_image):
                 seed = self.random_or_manual_seed(self.device)
 
                 # TODO: Use BLIP to generate source_prompt
                 with torch.inference_mode():
-                    image = pipe(
+                    output_images = pipe(
                         prompt=pos_prompt,
                         source_prompt=neg_prompt,
                         image=initial_img,
@@ -563,8 +571,9 @@ class StableDiffusion(QObject):
                         output_type="pil",
                         callback=live_preview,
                         callback_steps=self._callback_step,
-                    ).images[0]
-                self.results.append([image, seed[1]])
+                    ).images
+
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -608,18 +617,23 @@ class StableDiffusion(QObject):
             ]
         )
 
+        # TODO: Fix n_image loop
         for img in i2i_list:
-            initial_img = self.img2pillow(file=img).resize((width, height))
+            initial_img = self.img2pillow(file=img)
 
             for n in range(n_image):
                 seed = self.random_or_manual_seed(self.device)
 
+                # TODO: add conditional to image width/height. 
+                #  most none 1:1 images turn out strange
                 with torch.inference_mode():
                     image_transformed = transform(initial_img).to("cuda").unsqueeze(0)
-                    image = pipe(
+                    output_images = pipe(
                         image=image_transformed,
-                        width=width if width <= 512 else None,
-                        height=height if height <= 512 else None,
+                        # width=width if width <= 512 else None,
+                        # height=height if height <= 512 else None,
+                        width=initial_img.width,
+                        height=initial_img.height,
                         guidance_scale=cfg,
                         generator=seed[0],
                         num_images_per_prompt=n_batch,
@@ -627,8 +641,9 @@ class StableDiffusion(QObject):
                         output_type=self.output_type,
                         callback=live_preview,
                         callback_steps=self._callback_step,
-                    ).images[0]
-                    self.results.append([image, seed[1]])
+                    ).images
+
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -646,7 +661,7 @@ class StableDiffusion(QObject):
         i2i_list: list[str] = None,
         img_guidance: Union[int, float] = 1.5,
         pipe: type[DiffusionPipeline] = StableDiffusionInstructPix2PixPipeline,
-        live_preview=None
+        live_preview=None,
     ):
         """
         InstructPix2Pix human instruction image-to-image variations
@@ -663,7 +678,7 @@ class StableDiffusion(QObject):
                 initial_img = self.img2pillow(file=img)
 
                 with torch.inference_mode():
-                    image = pipe(
+                    output_images = pipe(
                         prompt=pos_prompt,
                         negative_prompt=neg_prompt,
                         prompt_embeds=pos_emb,
@@ -677,8 +692,9 @@ class StableDiffusion(QObject):
                         output_type=self.output_type,
                         callback=live_preview,
                         callback_steps=self._callback_step,
-                    ).images[0]
-                    self.results.append([image, seed[1]])
+                    ).images
+                
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -723,7 +739,7 @@ class StableDiffusion(QObject):
                 seed = self.random_or_manual_seed(self.device)
 
                 with torch.inference_mode():
-                    image = pipe(
+                    output_images = pipe(
                         prompt=pos_prompt,
                         negative_prompt=neg_prompt,
                         prompt_embeds=pos_emb,
@@ -739,8 +755,9 @@ class StableDiffusion(QObject):
                         output_type=self.output_type,
                         callback=live_preview,
                         callback_steps=self._callback_step,
-                    ).images[0]
-                    self.results.append([image, seed[1]])
+                    ).images
+                
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -780,7 +797,7 @@ class StableDiffusion(QObject):
                 seed = self.random_or_manual_seed(self.device)
 
                 with torch.inference_mode():
-                    image = pipe(
+                    output_images = pipe(
                         prompt=pos_prompt,
                         negative_prompt=neg_prompt,
                         prompt_embeds=pos_emb,
@@ -794,8 +811,9 @@ class StableDiffusion(QObject):
                         output_type=self.output_type,
                         callback=live_preview,
                         callback_steps=self._callback_step,
-                    ).images[0]
-                    self.results.append([image, seed[1]])
+                    ).images
+                
+                self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -846,7 +864,7 @@ class StableDiffusion(QObject):
         for n in range(n_image):
             seed = self.random_or_manual_seed(self.device)
 
-            image = pipe(
+            output_images = pipe(
                 prompt=pos_prompt,
                 negative_prompt=neg_prompt,
                 prompt_embeds=pos_emb,
@@ -861,8 +879,9 @@ class StableDiffusion(QObject):
                 output_type=self.output_type,
                 callback=live_preview,
                 callback_steps=self._callback_step,
-            ).images[0]
-            self.results.append([image, seed[1]])
+            ).images
+
+            self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
@@ -900,7 +919,7 @@ class StableDiffusion(QObject):
             seed = self.random_or_manual_seed(self.device)
 
             with torch.inference_mode():
-                image = pipe(
+                output_images = pipe(
                     prompt=pos_prompt,
                     negative_prompt=neg_prompt,
                     prompt_embeds=pos_emb,
@@ -914,8 +933,10 @@ class StableDiffusion(QObject):
                     output_type=self.output_type,
                     callback=live_preview,
                     callback_steps=self._callback_step,
-                ).images[0]
-                self.results.append([image, seed[1]])
+                ).images
+
+                self.make_list_from_image_seed(output_images, seed[1])
+                    
         self.img_finished.emit()
         return self.results
 
@@ -950,8 +971,9 @@ class StableDiffusion(QObject):
 
         for n in range(n_image):
             seed = self.random_or_manual_seed(self.device)
+            
             with torch.inference_mode():
-                image = pipe(
+                output_images = pipe(
                     prompt=pos_prompt,
                     negative_prompt=neg_prompt,
                     prompt_embeds=pos_emb,
@@ -965,11 +987,18 @@ class StableDiffusion(QObject):
                     output_type=self.output_type,
                     callback=live_preview,
                     callback_steps=self._callback_step,
-                ).images[0]
-                self.results.append([image, seed[1]])
+                ).images
+
+            # for i, s in zip(image, seed[1]):
+            #     self.results.append([i, s])
+            
+            self.make_list_from_image_seed(output_images, seed[1])
 
         self.img_finished.emit()
         return self.results
+    
+    def make_list_from_image_seed(self, image, seed):
+        return [self.results.append([i, s]) for i, s in zip(image, seed)]
 
     @staticmethod
     def img2pillow(file):
@@ -991,6 +1020,7 @@ class StableDiffusion(QObject):
         instead of just INT
         :return: list[torch.Generator, int] int is appended to end of image file name
         """
+
         batch_size = (
             int(self.parent.ui.select_batch_size.text())
             if len(self.parent.ui.select_batch_size.text()) >= 1

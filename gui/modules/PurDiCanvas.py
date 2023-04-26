@@ -85,7 +85,9 @@ class PurDiCanvasScene(QGraphicsScene):
         super().__init__()
         self.old_positions = {}
         self._center_view_pos = view_rect
+
         self.image_latent_currently_decoding = []
+        # self.current_latent_image = None
 
         # Fix scene not updating latent images as they are added
         # to the scene (animation/live preview)
@@ -206,11 +208,8 @@ class PurDiCanvasScene(QGraphicsScene):
             q_img = ImageQt(img)
             pixmap = QPixmap(q_img)
         elif isinstance(image, np.ndarray):
-            try:
-                qimage = qimage2ndarray.array2qimage(image, True)
-                pixmap = QPixmap.fromImage(qimage)
-            except ImportError:
-                qWarning(b"qimage2ndarray module not found")
+            qimage = qimage2ndarray.array2qimage(image, True)
+            pixmap = QPixmap.fromImage(qimage)
         else:
             print("input image must be a QImage, QPixmap, or numpy.ndarray.")
 
@@ -234,11 +233,6 @@ class PurDiCanvasScene(QGraphicsScene):
                 )
 
             if is_latent:
-                # item.setFlag(
-                #     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-                #     | QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
-                #     enabled=False,
-                # )
                 self.image_latent_currently_decoding.append(item)
 
             self.addItem(item)

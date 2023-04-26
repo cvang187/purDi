@@ -148,24 +148,13 @@ class PurDiToolBoxWidget(QDockWidget):
         if output is not None:
             # Save new pixmap
             updated_pixmap = util.image_to_qt_pixmap(output)
-            self.parent.view.show_image(
-                updated_pixmap, True, "Background Removal"
-            )
+            self.parent.view.show_image(updated_pixmap, True, "Background Removal")
 
         self.pa.background_removal_btn.setChecked(False)
         del tool
 
     def on_background_removal_tool_button(self, checked):
-        if checked:
-            current_pixmap = self.get_current_layer_latest_pixmap()
-            image = util.q_pixmap_to_image(current_pixmap)
-
-            from gui.modules.QBackgroundRemovalTool import QToolBackgroundRemoval
-
-            widget = QToolBackgroundRemoval(
-                None, image, self.on_background_removal_complete
-            )
-            widget.show()
+        pass
 
     # TODO: Fix?
     # @QtCore.Signal

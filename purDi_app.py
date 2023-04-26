@@ -492,12 +492,8 @@ class PurDiMainWindow(QMainWindow, QtStyleTools):
         self.ui.toolbar_left.setContentsMargins(0, 0, 0, 0)
         self.ui.toolbar_left.setFixedWidth(60)
 
-        self.edit_menu.addAction(
-            self.undo_menu.createUndoAction(self.view.scene)
-        )
-        self.edit_menu.addAction(
-            self.undo_menu.createRedoAction(self.view.scene)
-        )
+        self.edit_menu.addAction(self.undo_menu.createUndoAction(self.view.scene))
+        self.edit_menu.addAction(self.undo_menu.createRedoAction(self.view.scene))
 
         # self.toolbox_dock_widget.setParent(self.centralWidget())
         # self.toolbox_dock_widget.setVisible(False)  # hide toolbox
@@ -630,32 +626,33 @@ class StableDiffusionRunnable(QRunnable):
         """
         self.parent.disable_generate_img_button()
         self.update_user_params()
-        pipeline_results = self.get_pipeline_results()
 
         self.up_scaling_latent = (
             True
             if (
-                self.parent.ui.latent_upscale_checkbox.isChecked()
-                and not self.parent.ui.img2img_checkbox.isChecked()
+                    self.parent.ui.latent_upscale_checkbox.isChecked()
+                    and not self.parent.ui.img2img_checkbox.isChecked()
             )
             else False
         )
-
         self.restore_face = (
             True
             if (
-                self.parent.ui.vqfr_checkbox.isChecked()
-                or self.parent.ui.codeformer_checkbox.isChecked()
+                    self.parent.ui.vqfr_checkbox.isChecked()
+                    or self.parent.ui.codeformer_checkbox.isChecked()
             )
             else False
         )
 
-        for result in tqdm(pipeline_results, desc="Additional Image Processing: "):
-            image = result[0]
-            seed = result[1][0]
+        # try:
+        pipeline_results = self.get_pipeline_results()
 
-            image_name = f"{self.positive[:60]}"
-            img_uri = self.get_image_path(seed=seed, name=image_name)
+        # for item in tqdm(range(image_result.shape[0]), desc="Additional Image Processing: "):
+        for index, item in tqdm(enumerate(pipeline_results), desc="Additional Image Processing: "):
+            image = item[0]
+            seed = item[1]
+            filename = f"{self.positive[:60]}"
+            img_uri = self.get_image_path(seed=seed, name=filename)
 
             if self.up_scaling_latent:
                 latent_seed = torch.Generator(device="cpu").manual_seed(seed)
@@ -665,27 +662,46 @@ class StableDiffusionRunnable(QRunnable):
                     steps=self.n_steps,
                     seed=latent_seed,
                 )
-                img_uri = self.get_image_path(seed=seed, name=image_name, suffix='latent_2x')
+                img_uri = self.get_image_path(
+                    seed=seed, name=filename, suffix="latent_2x"
+                )
                 image.save(f"{img_uri}.png")
 
             if self.restore_face:
                 image = self.vqfr_restore_face(f"{img_uri}.png")
                 image = Image.fromarray(image)
-                img_uri = self.get_image_path(seed=seed, name=image_name, suffix="VQFR")
+                img_uri = self.get_image_path(seed=seed, name=filename, suffix="VQFR")
 
             self.parent.view.scene.show_image(image)
-            image.save(f"{img_uri}.png")
 
+            if (
+                    isinstance(image, np.ndarray)
+                    and self.parent.ui.img2img_image_variation_checkbox.isChecked()
+            ):
+                img = (image * 255).astype(np.uint8)
+                image = Image.fromarray(img).convert("RGB")
+
+            image.save(f"{img_uri}.png")
+        # except:
+        #   self.parent.re_enable_generate_img_button()
+        # else:
         self.restore_face = False
         self.up_scaling_latent = False
         self.parent.re_enable_generate_img_button()
 
-    def live_img_preview(self, i, t, latents):
-        img = self.pipe.decode_latents(latents)
-        img = img.squeeze()
+    def img_callback(self, i, t, latents: torch.Tensor):
         self.parent.ui.generate_img_progress.setValue(t)
-        self.parent.view.scene.show_image(img, is_latent=True)
-        _ = i
+
+        # if self.parent.ui.live_preview_checkbox.isChecked():
+        #     latents: np.ndarray = self.pipe.decode_latents(latents)
+        #     latents: np.ndarray = latents.squeeze()
+        #
+        #     if latents.ndim == 3:
+        #         self.parent.view.scene.show_image(latents, is_latent=True)
+        #         return
+        #
+        #     for lat in latents:
+        #         self.parent.view.scene.show_image(lat, is_latent=True)
 
     def get_pipeline_results(self):
         """
@@ -696,8 +712,6 @@ class StableDiffusionRunnable(QRunnable):
         pos_prompt, neg_prompt, pos_emb, neg_emb = self.prompt_weight_embedding(
             pipe_line=self.pipe, positive=self.positive, negative=self.negative
         )
-
-        callback_function = self.live_img_preview if self.parent.ui.live_preview_checkbox.isChecked() else None
 
         if (
             self.parent.ui.img2img_select_box.count() >= 1
@@ -733,43 +747,43 @@ class StableDiffusionRunnable(QRunnable):
                 if controlnet_current_selection == canny:
                     return self.pipeline.controlnet_canny(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == depth_map:
                     return self.pipeline.controlnet_depth(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == hed:
                     return self.pipeline.controlnet_hed(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == mlsd:
                     return self.pipeline.controlnet_mlsd(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == open_pose:
                     return self.pipeline.controlnet_openpose(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == scribble:
                     return self.pipeline.controlnet_scribble(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
                 elif controlnet_current_selection == seg:
                     return self.pipeline.controlnet_seg(
                         user_params,
-                        callback=callback_function,
+                        callback=self.img_callback,
                         img_file_name=self.positive,
                     )
 
@@ -791,7 +805,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.cycle_diffusion_checkbox.isChecked():
                 # works with any checkpoint below SD v1.5
@@ -810,7 +824,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     strength=self.img2img_strength,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.instruct_pix2pix_checkbox.isChecked():
                 self.model_id = "timbrooks/instruct-pix2pix"
@@ -835,7 +849,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     img_guidance=img_guidance_scale,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.pix2pix_zero_checkbox.isChecked():
                 import transformers
@@ -863,7 +877,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.inpaint_checkbox.isChecked():
                 self.model_id = "stabilityai/stable-diffusion-2-inpainting"
@@ -883,7 +897,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     i2i_list=self.i2i_list,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             else:
                 self.pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
@@ -903,7 +917,7 @@ class StableDiffusionRunnable(QRunnable):
                     i2i_list=self.i2i_list,
                     strength=self.img2img_strength,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
         else:
             if self.parent.ui.multidiffusion_panorama_checkbox.isChecked():
@@ -924,7 +938,7 @@ class StableDiffusionRunnable(QRunnable):
                     n_steps=self.n_steps,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.self_attention_guidance_checkbox.isChecked():
                 self.pipe = StableDiffusionSAGPipeline.from_pretrained(
@@ -944,7 +958,7 @@ class StableDiffusionRunnable(QRunnable):
                     scheduler=self.scheduler,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             elif self.parent.ui.attend_excite_checkbox.isChecked():
                 self.model_id = "CompVis/stable-diffusion-v1-4"
@@ -966,7 +980,7 @@ class StableDiffusionRunnable(QRunnable):
                     cfg=self.cfg,
                     max_alteration=max_alteration,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
             else:
                 return self.pipeline.txt2img(
@@ -982,7 +996,7 @@ class StableDiffusionRunnable(QRunnable):
                     scheduler=self.scheduler,
                     cfg=self.cfg,
                     pipe=self.pipe,
-                    live_preview=callback_function,
+                    live_preview=self.img_callback,
                 )
 
     def get_image_path(self, seed: int, name, suffix="") -> str:
@@ -995,7 +1009,7 @@ class StableDiffusionRunnable(QRunnable):
 
         return os.path.join(
             self._img_output_dir,
-            f"{name.replace(' ', '_').replace(',', '')}_{seed}_{suffix}"
+            f"{name.replace(' ', '_').replace(',', '')}_{seed}_{suffix}",
         )
 
     @staticmethod
@@ -1010,11 +1024,13 @@ class StableDiffusionRunnable(QRunnable):
         return output_image
 
     def vqfr_restore_face(self, image_path: str) -> np.array:
-        upscale_bg = True if self.parent.ui.vqfr_2x_bg_upscale_checkbox.isChecked() else False
+        upscale_bg = (
+            True if self.parent.ui.vqfr_2x_bg_upscale_checkbox.isChecked() else False
+        )
         face_restorer = Predictor(
             model_dir=self._upscaler_model_dir,
             output_dir=self._img_output_dir,
-            upscale=upscale_bg
+            upscale=upscale_bg,
         )
         output_image = face_restorer.predict(image_path)
         return output_image

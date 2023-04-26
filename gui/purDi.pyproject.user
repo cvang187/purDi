@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 9.0.2, 2023-04-03T22:34:29. -->
+<!-- Written by QtCreator 9.0.2, 2023-04-26T03:22:25. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -212,12 +212,10 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">modules/QBackgroundRemovalTool.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.D:/Github/purDi/gui/modules/QBackgroundRemovalTool.py</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/Github/purDi/gui/modules/QBackgroundRemovalTool.py</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">D:\Github\purDi\gui\modules\QBackgroundRemovalTool.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">D:/Github/purDi/gui/modules</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.13">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>

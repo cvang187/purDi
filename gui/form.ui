@@ -1253,7 +1253,7 @@
               <enum>QTabWidget::South</enum>
              </property>
              <property name="currentIndex">
-              <number>2</number>
+              <number>1</number>
              </property>
              <property name="elideMode">
               <enum>Qt::ElideLeft</enum>
@@ -2170,15 +2170,15 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>2</number>
                     </property>
                     <widget class="QWidget" name="page">
                      <property name="geometry">
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>360</width>
-                       <height>399</height>
+                       <width>170</width>
+                       <height>95</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2279,8 +2279,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>185</width>
-                       <height>250</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2439,7 +2439,7 @@
                         <item>
                          <widget class="QCheckBox" name="save_controlnet_input_maps_checkbox">
                           <property name="text">
-                           <string>Save Map</string>
+                           <string>Save Mask</string>
                           </property>
                          </widget>
                         </item>
@@ -2452,8 +2452,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>95</width>
-                       <height>426</height>
+                       <width>360</width>
+                       <height>399</height>
                       </rect>
                      </property>
                      <attribute name="label">
@@ -2482,7 +2482,9 @@
                          </sizepolicy>
                         </property>
                         <property name="text">
-                         <string>A Text-Guided Image-to-Image Generation model proposed in Unifying Diffusion Models’ Latent Space, with Applications to CycleDiffusion and Guidance by Chen Henry Wu, Fernando De la Torre. WARNING: Only 1.4 checkpoints</string>
+                         <string>A Text-Guided Image-to-Image Generation model proposed in Unifying Diffusion Models’ Latent Space, with Applications to CycleDiffusion and Guidance by Chen Henry Wu, Fernando De la Torre. 
+
+Notes: Only works with v1 SD checkpoints and best with square images.</string>
                         </property>
                         <property name="alignment">
                          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -3324,16 +3326,6 @@ You likely want to couple this with enable_attention_slicing() or enable_xformer
                        <property name="topMargin">
                         <number>0</number>
                        </property>
-                       <item>
-                        <widget class="QCheckBox" name="live_preview_checkbox">
-                         <property name="text">
-                          <string>Live Preview</string>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
                        <item>
                         <widget class="QCheckBox" name="nsfw_checkbox">
                          <property name="text">

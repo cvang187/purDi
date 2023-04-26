@@ -127,9 +127,7 @@ class QLayerList(QtWidgets.QDockWidget):
                                 self.currentButton.setStyleSheet(
                                     "background-color: rgb(22, 22, 22);"
                                 )
-                                self.parent.view.current_layer = (
-                                    next_layer_index
-                                )
+                                self.parent.view.current_layer = next_layer_index
                                 pixmap = (
                                     self.parent.view.get_current_layer_latest_pixmap()
                                 )

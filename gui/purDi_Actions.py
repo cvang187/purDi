@@ -28,9 +28,7 @@ def add_buttons_to_widget(widget: QObject, buttons_list: list) -> None:
         widget.addWidget(button)
 
 
-def set_icon_color(
-        icon_path: str, replace_color="black", new_color="white"
-) -> QPixmap:
+def set_icon_color(icon_path: str, replace_color="black", new_color="white") -> QPixmap:
     """
     Sets the icon color of the button
     :param icon_path: the filename of the icon to set
@@ -47,10 +45,10 @@ def set_icon_color(
 
 
 def create_actions(
-        icon_path: str,
-        icon_txt: str = "",
-        icon_tool_tip: str = "",
-        parent: Optional[QObject] = None
+    icon_path: str,
+    icon_txt: str = "",
+    icon_tool_tip: str = "",
+    parent: Optional[QObject] = None,
 ) -> QAction:
     """
     A function that helps create a QAction
@@ -60,22 +58,16 @@ def create_actions(
     :param parent: self
     """
     create_action_pixmap = set_icon_color(
-        icon_path=icon_path,
-        replace_color="black",
-        new_color="white"
+        icon_path=icon_path, replace_color="black", new_color="white"
     )
-    create_action = QAction(
-        icon=create_action_pixmap,
-        text=icon_txt,
-        parent=parent
-    )
+    create_action = QAction(icon=create_action_pixmap, text=icon_txt, parent=parent)
     create_action.setToolTip(icon_tool_tip)
     create_action.setCheckable(True)
     return create_action
 
 
 def create_buttons(
-        icon_path: str, icon_txt: str = "", icon_tool_tip: str = ""
+    icon_path: str, icon_txt: str = "", icon_tool_tip: str = ""
 ) -> QPushButton:
     """
     A function that helps create a QAction instead of repeating the same
@@ -121,12 +113,8 @@ class PurDiActions(QAction):
         self.cursor_icon_path = "gui/icons/cursor.svg"
 
         # create image editing buttons as QToolButtons for the toolbox
-        self.cursor_tool_btn = create_buttons(
-            self.cursor_icon_path, "", "Cursor"
-        )
-        self.eyedropper_btn = create_buttons(
-            self.eye_drop_icon_path, "", "Eye Dropper"
-        )
+        self.cursor_tool_btn = create_buttons(self.cursor_icon_path, "", "Cursor")
+        self.eyedropper_btn = create_buttons(self.eye_drop_icon_path, "", "Eye Dropper")
         self.paintbrush_btn = create_buttons(
             self.paintbrush_icon_path, "", "Paint Brush"
         )
@@ -136,9 +124,7 @@ class PurDiActions(QAction):
         self.path_select_btn = create_buttons(
             self.path_select_icon_path, "", "Path Tool"
         )
-        self.crop_image_btn = create_buttons(
-            self.crop_tool_icon_path, "", "Crop"
-        )
+        self.crop_image_btn = create_buttons(self.crop_tool_icon_path, "", "Crop")
         self.rotate_img_left_btn = create_buttons(
             self.rotate_left_icon_path,
             "",
@@ -187,9 +173,7 @@ class PurDiActions(QAction):
             "",
             "White Balance",
         )
-        self.eraser_btn = create_buttons(
-            self.eraser_icon_path, "", "Eraser"
-        )
+        self.eraser_btn = create_buttons(self.eraser_icon_path, "", "Eraser")
         self.instagram_filters_btn = create_buttons(
             self.instagram_filter_icon_path,
             "",
@@ -216,38 +200,56 @@ class PurDiActions(QAction):
             self.crop_tool_icon_path, "Crop", "Crop"
         )
         self.rotate_img_left_action = create_actions(
-            self.rotate_left_icon_path, "Rotate Left", "Rotate Image Left",
+            self.rotate_left_icon_path,
+            "Rotate Left",
+            "Rotate Image Left",
         )
         self.rotate_img_right_action = create_actions(
-            self.rotate_right_icon_path, "Rotate Right","Rotate Image Left",
+            self.rotate_right_icon_path,
+            "Rotate Right",
+            "Rotate Image Left",
         )
         self.horizontal_flip_img_action = create_actions(
-            self.horizontal_flip_img_icon_path, "Flip Horizontal", "Horizontal Image Flip",
+            self.horizontal_flip_img_icon_path,
+            "Flip Horizontal",
+            "Horizontal Image Flip",
         )
         self.vertical_flip_img_action = create_actions(
-            self.vertical_flip_img_icon_path, "Flip Vertical", "Vertical Image Flip",
+            self.vertical_flip_img_icon_path,
+            "Flip Vertical",
+            "Vertical Image Flip",
         )
         self.panorama_action = create_actions(
             self.panorama_icon_path, "", "Apply Panorama"
         )
         self.background_removal_action = create_actions(
-            self.background_removal_icon_path, "Remove Background", "Remove Background",
+            self.background_removal_icon_path,
+            "Remove Background",
+            "Remove Background",
         )
         self.greyscale_background_action = create_actions(
-            self.greyscale_background_icon_path, "", "Greyscale Background",
+            self.greyscale_background_icon_path,
+            "",
+            "Greyscale Background",
         )
         self.blur_background_action = create_actions(
-            self.blur_background_icon_path, "Blur Background", "Background Blur",
+            self.blur_background_icon_path,
+            "Blur Background",
+            "Background Blur",
         )
         self.image_colorizer_action = create_actions(
-            self.image_colorizer_icon_path, "", "Colorizer",
+            self.image_colorizer_icon_path,
+            "",
+            "Colorizer",
         )
         self.white_balance_action = create_actions(
-            self.white_balance_icon_path, "", "White Balance",
+            self.white_balance_icon_path,
+            "",
+            "White Balance",
         )
-        self.eraser_action = create_actions(
-            self.eraser_icon_path, "", "Eraser"
-        )
+        self.eraser_action = create_actions(self.eraser_icon_path, "", "Eraser")
         self.instagram_filters_action = create_actions(
-            self.instagram_filter_icon_path, "", "Instagram Filters",
+            self.instagram_filter_icon_path,
+            "",
+            "Instagram Filters",
         )

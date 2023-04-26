@@ -13,7 +13,7 @@ class Predictor(BasePredictor):
         self,
         model_dir: os.path = os.path.abspath("models"),
         output_dir: os.path = os.path.abspath("output"),
-        upscale: bool = False
+        upscale: bool = False,
     ):
         self.restorer = None
         self.output_dir = output_dir
@@ -59,7 +59,10 @@ class Predictor(BasePredictor):
             raise ValueError(f"Model {self.vqfr_name} does not exist.")
 
         self.restorer = VQFR_Demo(
-            model_path=model_path, upscale=self.scale, arch=self.arch, bg_upsampler=self.bg_upsampler
+            model_path=model_path,
+            upscale=self.scale,
+            arch=self.arch,
+            bg_upsampler=self.bg_upsampler,
         )
 
     def predict(self, image: str, fidelity_ratio: int = 0) -> np.ndarray:
